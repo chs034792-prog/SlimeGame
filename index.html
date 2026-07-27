@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>슬라임 키우기</title>
+<style>
+  :root {
+    --bg: #12141c;
+    --panel: #1b1e29;
+    --panel-hi: #232735;
+    --line: #2f3444;
+    --text: #e7e9f0;
+    --muted: #8b93a7;
+    --accent: #7ef0b0;
+    --accent-dim: #3d7a5c;
+    --gold: #ffd36e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(1200px 600px at 50% -10%, #1d2233, var(--bg));
+    color: var(--text);
+    font-family: "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 48px;
+    /* 클리커는 연타가 기본이라 모바일 더블탭 확대를 막아야 한다 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .game {
+    width: 100%;
+    max-width: 880px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+  }
+  @media (max-width: 760px) {
+    .game { grid-template-columns: 1fr; }
+  }
+
+  h1 { font-size: 20px; margin: 0 0 14px; letter-spacing: -0.02em; }
+  h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  /* ---- 슬라임 무대 ---- */
+  .stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 320px;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+  }
+  .slime {
+    width: 120px;
+    height: 96px;
+    border-radius: 50% 50% 44% 44%;
+    background: radial-gradient(circle at 38% 30%, #fff8, transparent 45%),
+                linear-gradient(#5be39a, #2f9e6b);
+    box-shadow: 0 12px 30px #0006, inset 0 -10px 20px #0003;
+    transition: transform 90ms ease-out, filter 400ms;
+    transform-origin: 50% 100%;
+    position: relative;
+  }
+  .slime.squish { transform: scaleY(0.82) scaleX(1.12) !important; }
+  .slime::before, .slime::after {
+    content: "";
+    position: absolute;
+    top: 42%;
+    width: 9px; height: 12px;
+    border-radius: 50%;
+    background: #12141c;
+  }
+  .slime::before { left: 30%; }
+  .slime::after  { right: 30%; }
+  .shadow {
+    width: 150px; height: 14px; margin-top: -6px;
+    border-radius: 50%;
+    background: #0007;
+    filter: blur(4px);
+  }
+  .hint { position: absolute; top: 14px; color: var(--muted); font-size: 12px; }
+
+  .pop {
+    position: absolute;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    pointer-events: none;
+    animation: rise 750ms ease-out forwards;
+  }
+  @keyframes rise {
+    to { transform: translateY(-52px); opacity: 0; }
+  }
+
+  /* ---- 스탯 ---- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--panel-hi); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { font-size: 11px; color: var(--muted); }
+  .stat .v { font-size: 17px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .bar { height: 8px; background: #0d0f16; border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width 160ms; }
+  .barrow { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin: 12px 0 5px; }
+
+  /* ---- 버튼 ---- */
+  button {
+    font: inherit; color: inherit; cursor: pointer;
+    background: var(--panel-hi);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 14px;
+    width: 100%;
+    text-align: left;
+    transition: background 120ms, border-color 120ms, opacity 120ms;
+  }
+  button:hover:not(:disabled) { background: #2b3042; border-color: #414964; }
+  button:disabled { opacity: 0.42; cursor: not-allowed; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .feed {
+    text-align: center; font-weight: 700; margin-top: 14px;
+    background: linear-gradient(#2f9e6b, #248056); border-color: #3fb37e;
+  }
+  .feed:hover:not(:disabled) { background: linear-gradient(#37b57b, #2a9264); }
+
+  .shop { display: flex; flex-direction: column; gap: 8px; }
+  .up { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .up .name { font-weight: 600; font-size: 14px; }
+  .up .desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .up .cost { font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .lv { font-size: 11px; color: var(--accent); font-weight: 700; }
+
+  .rebirth { margin-top: 14px; text-align: center; font-weight: 700; border-color: #6a4fa8; background: #2c2340; }
+  .rebirth:hover:not(:disabled) { background: #3a2d55; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .warn { color: var(--gold); }
+
+  /* 멀미·발작 민감 사용자를 위한 OS 설정을 존중한다 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <main>
+    <h1>🟢 슬라임 키우기</h1>
+
+    <div class="stats">
+      <div class="stat"><div class="k">젤리</div><div class="v" id="s-jelly">0</div></div>
+      <div class="stat"><div class="k">초당 젤리</div><div class="v" id="s-jps">0</div></div>
+      <div class="stat"><div class="k">레벨</div><div class="v" id="s-level">1</div></div>
+    </div>
+
+    <div class="panel stage" id="stage">
+      <div class="hint">슬라임을 클릭해서 쓰다듬어 주세요</div>
+      <div class="slime" id="slime"></div>
+      <div class="shadow"></div>
+    </div>
+
+    <div class="barrow"><span>경험치</span><span id="s-exp">0 / 50</span></div>
+    <div class="bar"><i id="s-expbar"></i></div>
+
+    <button class="feed" id="feed">먹이 주기 — 젤리를 전부 경험치로</button>
+    <p class="note" id="note"></p>
+  </main>
+
+  <aside class="panel">
+    <h2>업그레이드</h2>
+    <div class="shop" id="shop"></div>
+    <button class="rebirth" id="rebirth">환생</button>
+    <p class="note">환생하면 레벨과 업그레이드가 초기화되고, <b>영혼</b>이 남아 모든 획득량이 영구히 늘어납니다.<br>영혼 <b id="s-souls">0</b>개 · 전체 배율 <b id="s-soulmult">x1.00</b></p>
+  </aside>
+</div>
+
+<script>
+/* ============================================================
+   1. 밸런스 데이터 — 가격과 표시 문구는 여기서 정한다.
+      주의: 여기에 행을 넣으면 버튼과 가격까지만 생긴다.
+      실제 효과는 아래 "3. 파생 수치"의 계산식에도 더해야 적용된다.
+   ============================================================ */
+const UPGRADES = [
+  { id: 'pat',    name: '손맛',   base: 10,  growth: 1.15,
+    desc: n => `쓰다듬기당 젤리 +${n + 1}` },
+  { id: 'field',  name: '젤리밭', base: 60,  growth: 1.18,
+    desc: n => `초당 젤리 +${(n * 0.5).toFixed(1)}` },
+  { id: 'digest', name: '소화력', base: 250, growth: 1.25,
+    desc: n => `먹이 경험치 x${(1 + 0.25 * n).toFixed(2)}` },
+];
+
+const REBIRTH_LEVEL = 20;     // 환생 가능 최소 레벨
+const OFFLINE_CAP_H = 8;      // 오프라인 보상 상한(시간)
+const SAVE_KEY = 'slime-idle-v1';
+
+/* ============================================================
+   2. 상태 — 저장되는 값은 전부 여기에만 둔다
+   ============================================================ */
+function freshState() {
+  return {
+    jelly: 0,
+    level: 1,
+    exp: 0,
+    souls: 0,
+    // UPGRADES 표에서 자동으로 만든다 — 표에 행을 추가하면 여기도 따라온다
+    up: Object.fromEntries(UPGRADES.map(u => [u.id, 0])),
+    lastSeen: Date.now(),
+  };
+}
+let state = freshState();
+
+/* ============================================================
+   3. 파생 수치 — 상태에서 계산만 하고 절대 저장하지 않는다
+   ============================================================ */
+const levelMult = () => 1 + 0.05 * (state.level - 1);
+const soulMult  = () => 1 + 0.10 * state.souls;
+const perClick  = () => (1 + state.up.pat) * levelMult() * soulMult();
+const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult();
+const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult();
+const expToNext = () => Math.floor(50 * Math.pow(state.level, 1.6));
+const costOf    = u => Math.floor(u.base * Math.pow(u.growth, state.up[u.id]));
+const soulGain  = () => Math.max(1, Math.floor(Math.sqrt(state.level / 5)));
+
+/* ============================================================
+   4. 행동
+   ============================================================ */
+function pat(x, y) {
+  const gain = perClick();
+  state.jelly += gain;
+  popText('+' + fmt(gain), x, y);
+  squish();
+}
+
+function feed() {
+  if (state.jelly < 1) return;
+  state.exp += state.jelly * expMult();
+  state.jelly = 0;
+  let leveled = false;
+  while (state.exp >= expToNext()) {
+    state.exp -= expToNext();
+    state.level++;
+    leveled = true;
+  }
+  if (leveled) note(`레벨 ${state.level} 달성! 모든 젤리 획득량 x${levelMult().toFixed(2)}`);
+  squish();
+}
+
+function buy(u) {
+  const cost = costOf(u);
+  if (state.jelly < cost) return;
+  state.jelly -= cost;
+  state.up[u.id]++;
+}
+
+function rebirth() {
+  if (state.level < REBIRTH_LEVEL) return;
+  const gained = soulGain();
+  const souls = state.souls + gained;
+  state = freshState();
+  state.souls = souls;
+  note(`환생! 영혼 ${gained}개를 얻어 전체 배율이 x${soulMult().toFixed(2)}가 되었습니다.`);
+}
+
+/* ============================================================
+   5. 루프 — 로직은 dt(초) 기반, 렌더는 매 프레임
+   ============================================================ */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.25);  // 탭 복귀 시 폭주 방지
+  last = now;
+  state.jelly += perSec() * dt;
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   6. 렌더 — 상태를 화면에 비추기만 한다
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const shopEl = $('shop');
+
+// 업그레이드 버튼은 최초 1회만 만들고, 이후엔 내용만 갱신한다.
+const rows = UPGRADES.map(u => {
+  const b = document.createElement('button');
+  b.className = 'up';
+  b.innerHTML = `<span><span class="name">${u.name}</span> <span class="lv"></span>
+                 <div class="desc"></div></span><span class="cost"></span>`;
+  b.onclick = () => buy(u);
+  shopEl.appendChild(b);
+  return { u, b, lv: b.querySelector('.lv'), desc: b.querySelector('.desc'), cost: b.querySelector('.cost') };
+});
+
+function render() {
+  const need = expToNext();
+  $('s-jelly').textContent = fmt(state.jelly);
+  $('s-jps').textContent   = fmt(perSec());
+  $('s-level').textContent = state.level;
+  $('s-exp').textContent   = `${fmt(state.exp)} / ${fmt(need)}`;
+  $('s-expbar').style.width = Math.min(100, state.exp / need * 100) + '%';
+  $('feed').disabled = state.jelly < 1;
+  $('s-souls').textContent = state.souls;
+  $('s-soulmult').textContent = 'x' + soulMult().toFixed(2);
+
+  for (const r of rows) {
+    const n = state.up[r.u.id];
+    const cost = costOf(r.u);
+    r.lv.textContent = n ? `Lv.${n}` : '';
+    r.desc.textContent = r.u.desc(n);
+    r.cost.textContent = fmt(cost);
+    r.b.disabled = state.jelly < cost;
+  }
+
+  const rb = $('rebirth');
+  rb.disabled = state.level < REBIRTH_LEVEL;
+  rb.textContent = rb.disabled
+    ? `환생 — 레벨 ${REBIRTH_LEVEL} 필요`
+    : `환생 — 영혼 +${soulGain()}`;
+
+  // 레벨이 오를수록 커지고 색이 변한다
+  const s = $('slime');
+  s.style.transform = `scale(${(1 + Math.log10(state.level) * 0.45).toFixed(3)})`;
+  s.style.filter = `hue-rotate(${(state.level - 1) * 7}deg)`;
+}
+
+/* ============================================================
+   7. 표시 형식 — 방치형은 숫자가 금방 커지므로 필수
+   ============================================================ */
+const UNITS = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+function fmt(n) {
+  if (!isFinite(n)) return '∞';
+  if (n < 1000) return n < 10 ? (Math.round(n * 10) / 10).toString() : Math.floor(n).toString();
+  const tier = Math.min(Math.floor(Math.log10(n) / 3), UNITS.length - 1);
+  return (n / Math.pow(1000, tier)).toFixed(2) + UNITS[tier];
+}
+
+/* ============================================================
+   8. 저장 / 불러오기 / 오프라인 보상
+   ============================================================ */
+function save() {
+  state.lastSeen = Date.now();
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch {
+    note('저장에 실패했습니다. 로컬 서버로 열면 해결됩니다.', true);
+  }
+}
+
+function load() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch { return; }
+  if (!raw) return;
+  try {
+    // 세이브에 없는 필드는 기본값으로 채운다 — 업데이트 후에도 옛 세이브가 살아남게.
+    const saved = JSON.parse(raw);
+    state = { ...freshState(), ...saved, up: { ...freshState().up, ...(saved.up || {}) } };
+  } catch {
+    return;
+  }
+  const secs = Math.max(0, (Date.now() - state.lastSeen) / 1000);
+  const capped = Math.min(secs, OFFLINE_CAP_H * 3600);
+  const earned = perSec() * capped;
+  if (earned >= 1) {
+    state.jelly += earned;
+    note(`자리를 비운 ${Math.floor(capped / 60)}분 동안 젤리 ${fmt(earned)}를 모았습니다.`);
+  }
+}
+
+let noteTimer;
+function note(msg, warn = false) {
+  const el = $('note');
+  el.textContent = msg;
+  el.className = warn ? 'note warn' : 'note';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { el.textContent = ''; }, 6000);
+}
+
+/* ============================================================
+   9. 연출 (juice) — 게임의 손맛은 대부분 여기서 나온다
+   ============================================================ */
+const stage = $('stage');
+function squish() {
+  const s = $('slime');
+  s.classList.add('squish');
+  setTimeout(() => s.classList.remove('squish'), 90);
+}
+function popText(text, x, y) {
+  const p = document.createElement('div');
+  p.className = 'pop';
+  p.textContent = text;
+  const r = stage.getBoundingClientRect();
+  p.style.left = (x - r.left - 12) + 'px';
+  p.style.top  = (y - r.top - 12) + 'px';
+  stage.appendChild(p);
+  p.addEventListener('animationend', () => p.remove());
+}
+
+/* ============================================================
+   10. 연결
+   ============================================================ */
+stage.addEventListener('pointerdown', e => pat(e.clientX, e.clientY));
+$('feed').onclick = feed;
+$('rebirth').onclick = () => {
+  if (confirm(`환생하면 레벨과 업그레이드가 초기화됩니다. 영혼 ${soulGain()}개를 얻습니다. 계속할까요?`)) rebirth();
+};
+
+load();
+setInterval(save, 5000);
+addEventListener('beforeunload', save);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
