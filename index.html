@@ -826,6 +826,10 @@ const TIERS = ['', '강화된 ', '흉포한 ', '심연의 ', '전설의 '];
 // 시작 직후 첫 보상이 몇 초 안에 들어와야 플레이어가 남는다.
 const hpOfStage     = s => Math.floor(10 * Math.pow(s, 1.55));
 const rewardOfStage = s => Math.floor(8 * Math.pow(s, 1.25));
+// 처치 경험치. 층당 요구 경험치(50 x 레벨^1.6)를 감안해, 자기 수준 근처 층을
+// 대여섯 번 잡으면 한 레벨이 오르도록 잡았다. 사냥만으로도 레벨이 붙게 해
+// 젤리를 먹이는 것 말고 두 번째 성장 경로를 만든다.
+const expOfStage    = s => Math.floor(12 * Math.pow(s, 1.35));
 // 몬스터의 초당 피해. 지수를 체력(1.55)보다 훨씬 낮게 잡아, 층이 오를수록
 // '못 이기는' 게 아니라 '오래 걸리는' 쪽으로 먼저 막히게 했다.
 //
@@ -955,17 +959,29 @@ function hit(x, y) {
   hurtFace();
 }
 
-function feed() {
-  if (state.jelly < 1) return;
-  state.exp += state.jelly * expMult();
-  state.jelly = 0;
-  let leveled = false;
+/* 경험치를 넣고 레벨업을 처리한다. 먹이와 사냥 두 경로가 같은 함수를 쓴다.
+   레벨업은 그 자체로 능력치를 올린다 — levelMult()가 레벨당 +5%를 공격력·체력·
+   젤리 획득에 곱으로 얹기 때문이다. 여기서는 추가로 체력을 가득 채워 준다:
+   방금 강해졌는데 빈사 상태로 다음 층에 부딪히면 성장한 느낌이 안 산다. */
+function gainExp(amount) {
+  state.exp += amount;
+  let ups = 0;
   while (state.exp >= expToNext()) {
     state.exp -= expToNext();
     state.level++;
-    leveled = true;
+    ups++;
   }
-  if (leveled) note(`레벨 ${state.level} 달성! 모든 젤리 획득량 x${levelMult().toFixed(2)}`);
+  if (ups > 0) {
+    state.hp = slimeMaxHp();
+    note(`레벨 ${state.level} 달성! 능력치 상승 · 체력 회복 (전체 x${levelMult().toFixed(2)})`);
+  }
+  return ups;
+}
+
+function feed() {
+  if (state.jelly < 1) return;
+  gainExp(state.jelly * expMult());
+  state.jelly = 0;
   squish();
 }
 
@@ -1024,6 +1040,7 @@ function fight(dt) {
     state.monsterHp -= atk();
     if (state.monsterHp <= 0) {
       state.jelly += rewardOfStage(state.stage) * sJelly();
+      gainExp(expOfStage(state.stage) * expMult());   // 처치 보상 경험치
       state.stage++;
       startFloor();
       return;
