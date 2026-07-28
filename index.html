@@ -113,9 +113,10 @@
   /* 세 동작은 JS가 매 공격 주기마다 다시 튼다(playAttack).
      무한 반복으로 두면 CSS 시계와 JS 시계가 따로 흘러서,
      체력이 깎이는 순간과 때리는 동작이 어긋난다. */
-  .stage.atk .unit  { animation: brawl 1100ms ease-in-out; }
-  .stage.atk .weap  { animation: swing 1100ms ease-in-out; }
-  .stage.atk .ebody { animation: foeAct 1100ms ease-in-out; }
+  /* --atkdur는 playAttack이 공격 속도에 맞춰 넣는다. 기본값은 실측 전 첫 프레임용. */
+  .stage.atk .unit  { animation: brawl var(--atkdur, 1100ms) ease-in-out; }
+  .stage.atk .weap  { animation: swing var(--atkdur, 1100ms) ease-in-out; }
+  .stage.atk .ebody { animation: foeAct var(--atkdur, 1100ms) ease-in-out; }
   /* 위아래 반동과 달려들기를 한 애니메이션에 합쳤다.
      transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
   @keyframes brawl {
@@ -616,6 +617,7 @@
       <div class="stat"><div class="k">초당 젤리</div><div class="v" id="s-jps">0</div></div>
       <div class="stat"><div class="k">레벨</div><div class="v" id="s-level">1</div></div>
       <div class="stat"><div class="k">공격력</div><div class="v" id="s-atk">2</div></div>
+      <div class="stat"><div class="k">공격속도</div><div class="v" id="s-spd">x1.00</div></div>
       <div class="stat"><div class="k">크리티컬</div><div class="v" id="s-crit">5%</div></div>
       <div class="stat"><div class="k">무기</div><div class="v sm" id="s-weapon">맨손</div></div>
     </div>
@@ -761,6 +763,9 @@ const UPGRADES = [
     desc: n => `공격력 +${n * 2}` },
   { id: 'vit',    name: '체력 단련', base: 90, growth: 1.20,
     desc: n => `최대 체력 +${n * 30}` },
+  { id: 'haste',  name: '공격 속도', base: 150, growth: 1.28,
+    desc: n => `공격 속도 x${Math.min(HASTE_CAP, 1 + 0.08 * n).toFixed(2)}`,
+    maxed: n => 1 + 0.08 * n >= HASTE_CAP },
 ];
 
 /* 영혼 강화 — 환생으로 얻은 영혼으로 산다.
@@ -848,6 +853,7 @@ const RETREAT  = 3;      // 쓰러지면 물러나는 층 수
 // HIT_DELAY는 brawl의 달려드는 시점(55%)에 맞춰 둔 값이다.
 const HIT_PERIOD = 1.1;
 const HIT_DELAY  = 0.6;
+const HASTE_CAP  = 2.5;   // 공격 속도 상한. 그 이상은 애니메이션이 눈에 안 잡힌다.
 const FLOOR_TIME = 20;   // 층당 제한 시간(초)
 const monsterOf     = s => MONSTERS[(s - 1) % MONSTERS.length];
 const tierOfStage   = s => Math.min(Math.floor((s - 1) / MONSTERS.length), TIERS.length - 1);
@@ -903,6 +909,7 @@ const critChance = () => Math.min(CRIT_CAP, critOf(state.up.crit) + weaponCrit()
 const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult() * sJelly();
 const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult() * sExp();
 const atk        = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult() * sAtk();
+const attackSpeed = () => Math.min(HASTE_CAP, 1 + 0.08 * state.up.haste);
 const slimeMaxHp = () => (120 + 30 * state.up.vit) * levelMult() * soulMult() * sVit();
 const expToNext = () => Math.floor(50 * Math.pow(state.level, 1.6));
 // 한 번에 몇 단계씩 살지: 1 | 10 | 'max'.
@@ -1034,8 +1041,12 @@ function fight(dt) {
      예전처럼 초당 피해로 깎으면 체력바가 스르륵 줄어서 때리는 동작과 따로 논다.
      한 번의 타격으로 잡을 수 있는 몬스터는 최대 한 마리다 — 넘치는 피해는 버린다.
      그래야 한 프레임에 수십 층이 날아가지 않고 제한 시간도 의미를 갖는다. */
+  // 공격 속도가 오르면 주기와 타격 시점이 함께 줄어든다(비율은 유지).
+  // playAttack이 애니메이션 길이도 같은 배율로 맞추므로 동작과 타격이 안 어긋난다.
+  const spd = attackSpeed();
+  const delay = HIT_DELAY / spd, period = HIT_PERIOD / spd;
   cycleT += dt;
-  if (!struck && cycleT >= HIT_DELAY) {
+  if (!struck && cycleT >= delay) {
     struck = true;
     state.monsterHp -= atk();
     if (state.monsterHp <= 0) {
@@ -1046,7 +1057,7 @@ function fight(dt) {
       return;
     }
   }
-  if (cycleT >= HIT_PERIOD) { cycleT -= HIT_PERIOD; struck = false; playAttack(); }
+  if (cycleT >= period) { cycleT -= period; struck = false; playAttack(); }
 }
 
 function buy(u) {
@@ -1202,6 +1213,7 @@ function render() {
   $('s-jps').textContent   = fmt(perSec());
   $('s-level').textContent = state.level;
   $('s-atk').textContent   = fmt(atk());
+  $('s-spd').textContent   = 'x' + attackSpeed().toFixed(2);
   $('s-crit').textContent  = (critChance() * 100).toFixed(0) + '%';
   const wp = weaponOf();
   $('s-weapon').textContent = wp ? `${wp.icon} ${wp.name}` : '맨손';
@@ -1311,6 +1323,9 @@ function restartAnim(el, cls) {
 // 공격 애니메이션 세 개를 처음부터 다시 튼다. 기절 중에는 멈춰 있어야 하므로 건너뛴다.
 function playAttack() {
   if (stunLeft > 0) return;
+  // 애니메이션 길이를 공격 주기와 같은 배율로 줄인다. 안 그러면 다음 타격이
+  // 이전 동작이 끝나기 전에 와서 동작과 숫자가 어긋난다.
+  $('stage').style.setProperty('--atkdur', (1100 / attackSpeed()).toFixed(0) + 'ms');
   restartAnim($('stage'), 'atk');
 }
 
