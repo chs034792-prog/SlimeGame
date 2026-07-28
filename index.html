@@ -75,16 +75,60 @@
     position: relative;
   }
   .slime.squish { transform: scaleY(0.82) scaleX(1.12) !important; }
-  .slime::before, .slime::after {
-    content: "";
+
+  /* 눈·입은 의사요소가 아니라 실제 요소로 둔다.
+     아플 때 눈 하나를 "><"의 두 획으로 쪼개야 하는데,
+     그러려면 눈마다 ::before/::after를 따로 써야 하기 때문이다. */
+  .eye {
     position: absolute;
     top: 42%;
     width: 9px; height: 12px;
     border-radius: 50%;
     background: #12141c;
   }
-  .slime::before { left: 30%; }
-  .slime::after  { right: 30%; }
+  .eye.l { left: 30%; }
+  .eye.r { right: 30%; }
+
+  .mouth {
+    position: absolute;
+    top: 62%; left: 50%;
+    width: 15px; height: 11px; margin-left: -7.5px;
+    border-radius: 45% 45% 55% 55%;
+    background: #12141c;
+    transform: scale(0);
+    transition: transform 110ms ease-out;
+  }
+
+  /* 맞은 자리가 붉게 달아오르는 기운.
+     render()가 .slime의 inline filter를 매 프레임 덮어쓰므로
+     filter로는 못 하고 별도 레이어로 처리한다. */
+  .hurtglow {
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 42%, #ff5a5a70, transparent 68%);
+    opacity: 0;
+    transition: opacity 90ms;
+    pointer-events: none;
+  }
+
+  /* ---- 아픈 표정 ---- */
+  .slime.hurt .hurtglow { opacity: 1; }
+  .slime.hurt .mouth    { transform: scale(1); }
+  .slime.hurt .eye      { background: transparent; }
+  .slime.hurt .eye::before,
+  .slime.hurt .eye::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 0;
+    width: 10px; height: 2.5px; margin-top: -1.25px;
+    border-radius: 2px;
+    background: #12141c;
+  }
+  /* 두 획이 한 점에서 만나도록 회전축을 꼭짓점에 둔다 → 왼눈 ">", 오른눈 "<" */
+  .slime.hurt .eye.l::before { transform-origin: 100% 50%; transform: rotate(-32deg); }
+  .slime.hurt .eye.l::after  { transform-origin: 100% 50%; transform: rotate(32deg); }
+  .slime.hurt .eye.r::before { transform-origin: 0 50%;    transform: rotate(32deg); }
+  .slime.hurt .eye.r::after  { transform-origin: 0 50%;    transform: rotate(-32deg); }
   .shadow {
     width: 150px; height: 14px; margin-top: -6px;
     border-radius: 50%;
@@ -232,8 +276,13 @@
     </div>
 
     <div class="panel stage" id="stage">
-      <div class="hint">슬라임을 클릭해서 쓰다듬어 주세요</div>
-      <div class="slime" id="slime"></div>
+      <div class="hint">슬라임을 클릭해서 때려 주세요</div>
+      <div class="slime" id="slime">
+        <span class="hurtglow"></span>
+        <span class="eye l"></span>
+        <span class="eye r"></span>
+        <span class="mouth"></span>
+      </div>
       <div class="shadow"></div>
     </div>
 
@@ -261,7 +310,7 @@
       주의: 여기에 행을 넣으면 버튼과 가격까지만 생긴다.
       실제 효과는 아래 "3. 파생 수치"의 계산식에도 더해야 적용된다.
    ============================================================ */
-// 크리티컬: 쓰다듬을 때 확률적으로 젤리를 배로 준다.
+// 크리티컬: 때릴 때 확률적으로 젤리를 배로 준다.
 // 상한을 두는 이유는 100%가 되면 "확률"이라는 재미가 사라지고
 // 손맛 업그레이드와 효과가 완전히 겹쳐버리기 때문이다.
 const CRIT_MULT = 2;      // 터졌을 때 배수
@@ -271,8 +320,10 @@ const CRIT_CAP  = 0.75;   // 18단계에서 도달
 const critOf = n => Math.min(CRIT_CAP, CRIT_BASE + CRIT_STEP * n);
 
 const UPGRADES = [
+  // id는 세이브의 키다. 표시 문구가 '쓰다듬기'에서 '때리기'로 바뀌어도
+  // 'pat'을 그대로 둬야 기존 플레이어의 레벨이 날아가지 않는다.
   { id: 'pat',    name: '손맛',   base: 10,  growth: 1.15,
-    desc: n => `쓰다듬기당 젤리 +${n + 1}` },
+    desc: n => `때리기당 젤리 +${n + 1}` },
   { id: 'crit',   name: '행운',   base: 200, growth: 1.30,
     desc: n => `크리티컬 확률 ${(critOf(n) * 100).toFixed(0)}% · 젤리 x${CRIT_MULT}`,
     maxed: n => critOf(n) >= CRIT_CAP },
@@ -333,13 +384,14 @@ const soulGain  = () => Math.max(1, Math.floor(Math.sqrt(state.level / 5)));
 /* ============================================================
    4. 행동
    ============================================================ */
-function pat(x, y) {
+function hit(x, y) {
   const crit = Math.random() < critChance();
   const gain = perClick() * (crit ? CRIT_MULT : 1);
   state.jelly += gain;
   popText((crit ? '크리! +' : '+') + fmt(gain), x, y, crit);
   burst(x, y, crit);
   squish();
+  hurtFace();
 }
 
 function feed() {
@@ -518,6 +570,17 @@ function squish() {
   s.classList.add('squish');
   setTimeout(() => s.classList.remove('squish'), 90);
 }
+
+// 맞은 표정(눈 ><, 벌어진 입, 붉은 기운).
+// 스쿼시(90ms)보다 길게 잡아야 표정이 읽힌다. 연타하면 타이머가
+// 계속 밀려서 때리는 동안 계속 찡그린 얼굴로 남는다.
+let hurtTimer;
+function hurtFace() {
+  const s = $('slime');
+  s.classList.add('hurt');
+  clearTimeout(hurtTimer);
+  hurtTimer = setTimeout(() => s.classList.remove('hurt'), 260);
+}
 // 누른 자리에 파문 + 젤리 방울을 뿌린다.
 // 방치형에서 '누르는 맛'은 숫자가 아니라 대부분 여기서 나온다.
 function burst(x, y, crit) {
@@ -572,7 +635,7 @@ function popText(text, x, y, crit = false) {
 /* ============================================================
    10. 연결
    ============================================================ */
-stage.addEventListener('pointerdown', e => pat(e.clientX, e.clientY));
+stage.addEventListener('pointerdown', e => hit(e.clientX, e.clientY));
 $('feed').onclick = feed;
 $('rebirth').onclick = () => {
   if (confirm(`환생하면 레벨과 업그레이드가 초기화됩니다. 영혼 ${soulGain()}개를 얻습니다. 계속할까요?`)) rebirth();
