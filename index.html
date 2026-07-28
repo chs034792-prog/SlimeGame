@@ -107,7 +107,7 @@
   }
   .unit {
     position: relative;
-    width: 100px; margin-left: 2%;
+    width: 100px; margin-left: 0;
     display: flex; flex-direction: column; align-items: center;
   }
   /* 세 동작은 JS가 매 공격 주기마다 다시 튼다(playAttack).
@@ -163,8 +163,10 @@
   }
 
   /* 몬스터 쪽 */
+  /* 오른쪽 여백을 넉넉히 둔다. 체력바가 몬스터보다 넓어서
+     몬스터를 가장자리에 붙이면 바가 무대 밖으로 잘린다. */
   .foe {
-    position: absolute; right: 8%; bottom: 34px;
+    position: absolute; right: 16%; bottom: 34px;
     display: flex; flex-direction: column; align-items: center;
   }
   .foe.entering { animation: foeIn 420ms ease-out; }
@@ -177,14 +179,18 @@
   .hpwrap {
     position: absolute; bottom: 100%; left: 50%;
     transform: translateX(-50%);
-    width: 112px; margin-bottom: 8px;
+    width: 140px; margin-bottom: 8px;
   }
   .ename {
     display: flex; justify-content: space-between; gap: 6px;
     font-size: 10px; color: var(--muted); margin-bottom: 4px;
     white-space: nowrap;
   }
-  .ehpnum { font-variant-numeric: tabular-nums; }
+  /* '전설의 식인 상어' 같은 긴 이름은 고정폭을 넘긴다.
+     이름만 줄이고 체력 숫자는 절대 밀려나지 않게 한다 —
+     넘치면 무대의 overflow:hidden에 잘려서 숫자가 안 보인다. */
+  .ename > #e-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ehpnum { flex: none; font-variant-numeric: tabular-nums; }
   .ehp {
     height: 7px; background: #0d0f16;
     border: 1px solid var(--line); border-radius: 99px; overflow: hidden;
@@ -566,7 +572,7 @@
      미디어쿼리도 특이도가 같으면 순서로 이긴다 — 위쪽 @media에 두면
      아래에 나오는 .hpwrap 기본 규칙에 밀린다. 그래서 끝에 모아 뒀다. */
   @media (max-width: 760px) {
-    .hpwrap { width: 86px; }
+    .hpwrap { width: 100px; }
     .tagwrap { width: 96px; }
     .ename { font-size: 9px; }
   }
