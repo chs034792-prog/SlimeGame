@@ -245,6 +245,51 @@
   .up .cost { font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .lv { font-size: 11px; color: var(--accent); font-weight: 700; }
 
+  /* ---- 무기상점 ---- */
+  .headright { display: flex; align-items: center; gap: 10px; }
+  .iconbtn {
+    width: 38px; height: 38px; padding: 0;
+    flex: none;
+    display: grid; place-items: center;
+    font-size: 18px; line-height: 1;
+    text-align: center;
+  }
+  .stat .v.sm { font-size: 13px; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    padding: 20px;
+    background: #0009;
+  }
+  /* .modal이 display:grid라 기본 [hidden] 규칙을 이겨버린다 — 다시 눌러 준다 */
+  .modal[hidden] { display: none; }
+  .sheet {
+    width: 100%; max-width: 460px; max-height: 82vh;
+    display: flex; flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 24px 60px #000a;
+  }
+  .sheethead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .sheethead h2 { margin: 0; font-size: 16px; color: var(--text); }
+  .wlist { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+
+  .w { display: flex; align-items: center; gap: 12px; }
+  .wicon { font-size: 22px; flex: none; }
+  .wmain { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+  .wname { font-weight: 600; font-size: 14px; }
+  .wstat { font-size: 11px; color: var(--muted); }
+  .wcost { font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .w.locked .wcost { color: var(--muted); }
+  .w.owned  .wcost { color: var(--accent); }
+  .w.equipped { border-color: var(--accent-dim); background: #1f2a25; }
+  .w.equipped .wcost { color: var(--accent); }
+  /* 장착 중인 무기는 누를 일이 없어 비활성이지만, 흐려지면 오히려 눈에 안 띈다 */
+  .w.equipped:disabled { opacity: 1; }
+
   .rebirth { margin-top: 14px; text-align: center; font-weight: 700; border-color: #6a4fa8; background: #2c2340; }
   .rebirth:hover:not(:disabled) { background: #3a2d55; }
   .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
@@ -264,7 +309,10 @@
   <main>
     <div class="head">
       <h1>🟢 슬라임 키우기</h1>
-      <div class="credit">제작자 <b>희선</b></div>
+      <div class="headright">
+        <div class="credit">제작자 <b>희선</b></div>
+        <button class="iconbtn" id="shopbtn" aria-label="무기상점 열기" title="무기상점">⚔️</button>
+      </div>
     </div>
 
     <div class="stats">
@@ -273,6 +321,7 @@
       <div class="stat"><div class="k">레벨</div><div class="v" id="s-level">1</div></div>
       <div class="stat"><div class="k">공격력</div><div class="v" id="s-atk">2</div></div>
       <div class="stat"><div class="k">크리티컬</div><div class="v" id="s-crit">5%</div></div>
+      <div class="stat"><div class="k">무기</div><div class="v sm" id="s-weapon">맨손</div></div>
     </div>
 
     <div class="panel stage" id="stage">
@@ -304,6 +353,18 @@
   </aside>
 </div>
 
+<div class="modal" id="wshop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wshop-title">
+    <div class="sheethead">
+      <h2 id="wshop-title">⚔️ 무기상점</h2>
+      <button class="iconbtn" id="wshop-close" aria-label="닫기">✕</button>
+    </div>
+    <div class="wlist" id="wlist"></div>
+    <p class="note">무기는 하나만 장착됩니다. 이미 산 무기를 누르면 그것으로 바꿔 낍니다.<br>
+      <b>무기는 환생해도 사라지지 않습니다.</b></p>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    1. 밸런스 데이터 — 가격과 표시 문구는 여기서 정한다.
@@ -313,11 +374,14 @@
 // 크리티컬: 때릴 때 확률적으로 젤리를 배로 준다.
 // 상한을 두는 이유는 100%가 되면 "확률"이라는 재미가 사라지고
 // 손맛 업그레이드와 효과가 완전히 겹쳐버리기 때문이다.
-const CRIT_MULT = 2;      // 터졌을 때 배수
-const CRIT_BASE = 0.05;   // 업그레이드 0단계에서도 가끔 터져야 존재를 알아챈다
-const CRIT_STEP = 0.04;   // 단계당 상승폭
-const CRIT_CAP  = 0.75;   // 18단계에서 도달
-const critOf = n => Math.min(CRIT_CAP, CRIT_BASE + CRIT_STEP * n);
+const CRIT_MULT   = 2;      // 터졌을 때 배수
+const CRIT_BASE   = 0.05;   // 업그레이드 0단계에서도 가끔 터져야 존재를 알아챈다
+const CRIT_STEP   = 0.04;   // 단계당 상승폭
+const CRIT_UP_CAP = 0.75;   // '행운'만으로 도달 가능한 상한 (18단계)
+const CRIT_CAP    = 0.90;   // 무기까지 더한 전체 상한
+// 최고 무기의 크리(+15%)를 더하면 정확히 CRIT_CAP에 닿는다.
+// 이렇게 맞춰야 마지막 무기가 "이미 상한이라 의미 없는" 물건이 되지 않는다.
+const critOf = n => Math.min(CRIT_UP_CAP, CRIT_BASE + CRIT_STEP * n);
 
 const UPGRADES = [
   // id는 세이브의 키다. 표시 문구가 '쓰다듬기'에서 '때리기'로 바뀌어도
@@ -326,13 +390,28 @@ const UPGRADES = [
     desc: n => `때리기당 젤리 +${n + 1}` },
   { id: 'crit',   name: '행운',   base: 200, growth: 1.30,
     desc: n => `크리티컬 확률 ${(critOf(n) * 100).toFixed(0)}% · 젤리 x${CRIT_MULT}`,
-    maxed: n => critOf(n) >= CRIT_CAP },
+    maxed: n => critOf(n) >= CRIT_UP_CAP },
   { id: 'field',  name: '젤리밭', base: 60,  growth: 1.18,
     desc: n => `초당 젤리 +${(n * 0.5).toFixed(1)}` },
   { id: 'digest', name: '소화력', base: 250, growth: 1.25,
     desc: n => `먹이 경험치 x${(1 + 0.25 * n).toFixed(2)}` },
   { id: 'power',  name: '힘 훈련', base: 120, growth: 1.22,
     desc: n => `공격력 +${n * 2}` },
+];
+
+/* 무기 — 업그레이드와 달리 한 번만 사고, 하나만 장착한다.
+   요구 레벨이 20씩 올라가고 성능도 등급마다 계단식으로 뛴다.
+   가격 증가율(약 15배)이 공격력 증가율(약 4.7배)보다 크기 때문에
+   "다음 무기"는 항상 한참 모아야 하는 목표로 남는다.
+   무기는 환생해도 사라지지 않는다(rebirth 참고) — 판이 갈려도
+   남는 유일한 물건이라 상점이 장기 목표 역할을 한다. */
+const WEAPONS = [
+  { id: 'stick',  name: '나무 막대', icon: '🪵', level: 20,  cost: 1e3, atk: 15,    crit: 0.02 },
+  { id: 'axe',    name: '돌 도끼',   icon: '🪓', level: 40,  cost: 1.2e4, atk: 70,  crit: 0.04 },
+  { id: 'dagger', name: '녹슨 단검', icon: '🗡️', level: 60,  cost: 1.5e5, atk: 320, crit: 0.06 },
+  { id: 'sword',  name: '강철 검',   icon: '⚔️', level: 80,  cost: 2e6, atk: 1500,  crit: 0.08 },
+  { id: 'spear',  name: '화염 창',   icon: '🔥', level: 100, cost: 3e7, atk: 7000,  crit: 0.11 },
+  { id: 'scythe', name: '영혼 낫',   icon: '🌙', level: 120, cost: 5e8, atk: 35000, crit: 0.15 },
 ];
 
 // 몬스터 성장 곡선. 체력의 지수(1.55)가 보상의 지수(1.25)보다 크기 때문에
@@ -362,6 +441,8 @@ function freshState() {
     monsterHp: hpOfStage(1),
     // UPGRADES 표에서 자동으로 만든다 — 표에 행을 추가하면 여기도 따라온다
     up: Object.fromEntries(UPGRADES.map(u => [u.id, 0])),
+    weapons: [],       // 보유한 무기 id 목록
+    equipped: null,    // 장착 중인 무기 id (없으면 맨손)
     lastSeen: Date.now(),
   };
 }
@@ -373,10 +454,13 @@ let state = freshState();
 const levelMult = () => 1 + 0.05 * (state.level - 1);
 const soulMult  = () => 1 + 0.10 * state.souls;
 const perClick  = () => (1 + state.up.pat) * levelMult() * soulMult();
-const critChance = () => critOf(state.up.crit);
+const weaponOf   = () => WEAPONS.find(w => w.id === state.equipped) || null;
+const weaponAtk  = () => weaponOf()?.atk ?? 0;
+const weaponCrit = () => weaponOf()?.crit ?? 0;
+const critChance = () => Math.min(CRIT_CAP, critOf(state.up.crit) + weaponCrit());
 const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult();
 const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult();
-const atk       = () => (2 + 2 * state.up.power) * levelMult() * soulMult();
+const atk       = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult();
 const expToNext = () => Math.floor(50 * Math.pow(state.level, 1.6));
 const costOf    = u => Math.floor(u.base * Math.pow(u.growth, state.up[u.id]));
 const soulGain  = () => Math.max(1, Math.floor(Math.sqrt(state.level / 5)));
@@ -428,12 +512,28 @@ function buy(u) {
   state.up[u.id]++;
 }
 
+// 무기 한 자루를 사거나, 이미 가진 무기로 갈아 끼운다.
+function buyWeapon(w) {
+  if (state.weapons.includes(w.id)) { state.equipped = w.id; return; }
+  if (state.level < w.level) return;
+  if (state.jelly < w.cost) return;
+  state.jelly -= w.cost;
+  state.weapons.push(w.id);
+  state.equipped = w.id;   // 방금 산 무기는 바로 들려 준다
+  note(`${w.icon} ${w.name}을(를) 손에 넣었습니다!`);
+}
+
 function rebirth() {
   if (state.level < REBIRTH_LEVEL) return;
   const gained = soulGain();
   const souls = state.souls + gained;
+  // 무기는 영혼과 함께 판을 넘어 살아남는다. 매번 다시 사야 한다면
+  // 5억짜리 낫을 살 이유가 없어지고 상점 자체가 죽는다.
+  const { weapons, equipped } = state;
   state = freshState();
   state.souls = souls;
+  state.weapons = weapons;
+  state.equipped = equipped;
   note(`환생! 영혼 ${gained}개를 얻어 전체 배율이 x${soulMult().toFixed(2)}가 되었습니다.`);
 }
 
@@ -467,6 +567,36 @@ const rows = UPGRADES.map(u => {
   return { u, b, lv: b.querySelector('.lv'), desc: b.querySelector('.desc'), cost: b.querySelector('.cost') };
 });
 
+// 무기 목록도 최초 1회만 만든다
+const wlistEl = $('wlist');
+const wrows = WEAPONS.map(w => {
+  const b = document.createElement('button');
+  b.className = 'w';
+  b.innerHTML = `<span class="wicon">${w.icon}</span>
+                 <span class="wmain"><span class="wname">${w.name}</span>
+                 <span class="wstat"></span></span><span class="wcost"></span>`;
+  b.onclick = () => buyWeapon(w);
+  wlistEl.appendChild(b);
+  return { w, b, stat: b.querySelector('.wstat'), cost: b.querySelector('.wcost') };
+});
+
+function renderShop() {
+  for (const r of wrows) {
+    const owned    = state.weapons.includes(r.w.id);
+    const equipped = state.equipped === r.w.id;
+    const locked   = !owned && state.level < r.w.level;
+    r.stat.textContent = `공격력 +${fmt(r.w.atk)} · 크리 +${(r.w.crit * 100).toFixed(0)}%`;
+    r.cost.textContent = equipped ? '장착중'
+                       : owned    ? '장착'
+                       : locked   ? `레벨 ${r.w.level} 필요`
+                       : fmt(r.w.cost);
+    r.b.classList.toggle('owned', owned);
+    r.b.classList.toggle('equipped', equipped);
+    r.b.classList.toggle('locked', locked);
+    r.b.disabled = equipped || (!owned && (locked || state.jelly < r.w.cost));
+  }
+}
+
 function render() {
   const need = expToNext();
   $('s-jelly').textContent = fmt(state.jelly);
@@ -474,6 +604,10 @@ function render() {
   $('s-level').textContent = state.level;
   $('s-atk').textContent   = fmt(atk());
   $('s-crit').textContent  = (critChance() * 100).toFixed(0) + '%';
+  const wp = weaponOf();
+  $('s-weapon').textContent = wp ? `${wp.icon} ${wp.name}` : '맨손';
+  // 닫혀 있는 창을 매 프레임 갱신할 이유는 없다
+  if (!$('wshop').hidden) renderShop();
 
   const maxHp = hpOfStage(state.stage);
   const hp = Math.max(0, state.monsterHp);
@@ -637,6 +771,15 @@ function popText(text, x, y, crit = false) {
    ============================================================ */
 stage.addEventListener('pointerdown', e => hit(e.clientX, e.clientY));
 $('feed').onclick = feed;
+const wshop = $('wshop');
+const openShop  = () => { wshop.hidden = false; renderShop(); };
+const closeShop = () => { wshop.hidden = true; };
+$('shopbtn').onclick = openShop;
+$('wshop-close').onclick = closeShop;
+// 시트 바깥(어두운 배경)을 눌렀을 때만 닫는다
+wshop.addEventListener('pointerdown', e => { if (e.target === wshop) closeShop(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !wshop.hidden) closeShop(); });
+
 $('rebirth').onclick = () => {
   if (confirm(`환생하면 레벨과 업그레이드가 초기화됩니다. 영혼 ${soulGain()}개를 얻습니다. 계속할까요?`)) rebirth();
 };
