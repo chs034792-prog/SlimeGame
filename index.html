@@ -104,6 +104,17 @@
   @keyframes rise {
     to { transform: translateY(-52px); opacity: 0; }
   }
+  /* 크리티컬은 평타와 한눈에 구분돼야 손맛이 산다 */
+  .pop.crit {
+    color: var(--gold);
+    font-size: 20px;
+    text-shadow: 0 0 10px #ffd36e88;
+    animation: rise-crit 850ms ease-out forwards;
+  }
+  @keyframes rise-crit {
+    0%   { transform: translateY(0) scale(1.5); }
+    100% { transform: translateY(-64px) scale(1); opacity: 0; }
+  }
 
   /* ---- 스탯 ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -178,6 +189,7 @@
       <div class="stat"><div class="k">초당 젤리</div><div class="v" id="s-jps">0</div></div>
       <div class="stat"><div class="k">레벨</div><div class="v" id="s-level">1</div></div>
       <div class="stat"><div class="k">공격력</div><div class="v" id="s-atk">2</div></div>
+      <div class="stat"><div class="k">크리티컬</div><div class="v" id="s-crit">5%</div></div>
     </div>
 
     <div class="panel stage" id="stage">
@@ -210,9 +222,21 @@
       주의: 여기에 행을 넣으면 버튼과 가격까지만 생긴다.
       실제 효과는 아래 "3. 파생 수치"의 계산식에도 더해야 적용된다.
    ============================================================ */
+// 크리티컬: 쓰다듬을 때 확률적으로 젤리를 배로 준다.
+// 상한을 두는 이유는 100%가 되면 "확률"이라는 재미가 사라지고
+// 손맛 업그레이드와 효과가 완전히 겹쳐버리기 때문이다.
+const CRIT_MULT = 2;      // 터졌을 때 배수
+const CRIT_BASE = 0.05;   // 업그레이드 0단계에서도 가끔 터져야 존재를 알아챈다
+const CRIT_STEP = 0.04;   // 단계당 상승폭
+const CRIT_CAP  = 0.75;   // 18단계에서 도달
+const critOf = n => Math.min(CRIT_CAP, CRIT_BASE + CRIT_STEP * n);
+
 const UPGRADES = [
   { id: 'pat',    name: '손맛',   base: 10,  growth: 1.15,
     desc: n => `쓰다듬기당 젤리 +${n + 1}` },
+  { id: 'crit',   name: '행운',   base: 200, growth: 1.30,
+    desc: n => `크리티컬 확률 ${(critOf(n) * 100).toFixed(0)}% · 젤리 x${CRIT_MULT}`,
+    maxed: n => critOf(n) >= CRIT_CAP },
   { id: 'field',  name: '젤리밭', base: 60,  growth: 1.18,
     desc: n => `초당 젤리 +${(n * 0.5).toFixed(1)}` },
   { id: 'digest', name: '소화력', base: 250, growth: 1.25,
@@ -259,6 +283,7 @@ let state = freshState();
 const levelMult = () => 1 + 0.05 * (state.level - 1);
 const soulMult  = () => 1 + 0.10 * state.souls;
 const perClick  = () => (1 + state.up.pat) * levelMult() * soulMult();
+const critChance = () => critOf(state.up.crit);
 const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult();
 const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult();
 const atk       = () => (2 + 2 * state.up.power) * levelMult() * soulMult();
@@ -270,9 +295,10 @@ const soulGain  = () => Math.max(1, Math.floor(Math.sqrt(state.level / 5)));
    4. 행동
    ============================================================ */
 function pat(x, y) {
-  const gain = perClick();
+  const crit = Math.random() < critChance();
+  const gain = perClick() * (crit ? CRIT_MULT : 1);
   state.jelly += gain;
-  popText('+' + fmt(gain), x, y);
+  popText((crit ? '크리! +' : '+') + fmt(gain), x, y, crit);
   squish();
 }
 
@@ -303,6 +329,7 @@ function fight(dt) {
 }
 
 function buy(u) {
+  if (u.maxed && u.maxed(state.up[u.id])) return;
   const cost = costOf(u);
   if (state.jelly < cost) return;
   state.jelly -= cost;
@@ -354,6 +381,7 @@ function render() {
   $('s-jps').textContent   = fmt(perSec());
   $('s-level').textContent = state.level;
   $('s-atk').textContent   = fmt(atk());
+  $('s-crit').textContent  = (critChance() * 100).toFixed(0) + '%';
 
   const maxHp = hpOfStage(state.stage);
   const hp = Math.max(0, state.monsterHp);
@@ -369,10 +397,12 @@ function render() {
   for (const r of rows) {
     const n = state.up[r.u.id];
     const cost = costOf(r.u);
+    // 상한이 있는 업그레이드는 다 찍으면 더 못 사게 막는다
+    const maxed = r.u.maxed ? r.u.maxed(n) : false;
     r.lv.textContent = n ? `Lv.${n}` : '';
     r.desc.textContent = r.u.desc(n);
-    r.cost.textContent = fmt(cost);
-    r.b.disabled = state.jelly < cost;
+    r.cost.textContent = maxed ? 'MAX' : fmt(cost);
+    r.b.disabled = maxed || state.jelly < cost;
   }
 
   const rb = $('rebirth');
@@ -448,9 +478,9 @@ function squish() {
   s.classList.add('squish');
   setTimeout(() => s.classList.remove('squish'), 90);
 }
-function popText(text, x, y) {
+function popText(text, x, y, crit = false) {
   const p = document.createElement('div');
-  p.className = 'pop';
+  p.className = crit ? 'pop crit' : 'pop';
   p.textContent = text;
   const r = stage.getBoundingClientRect();
   p.style.left = (x - r.left - 12) + 'px';
