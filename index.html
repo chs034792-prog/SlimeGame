@@ -64,6 +64,30 @@
     border-radius: 99px; padding: 3px 9px;
     font-variant-numeric: tabular-nums;
   }
+  .timer {
+    flex: none;
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    background: #0006; border: 1px solid var(--line);
+    border-radius: 99px; padding: 3px 9px;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer.warn { color: #ff8a8a; border-color: #a34848; background: #2a1414; }
+
+  .failfx {
+    position: absolute; inset: 0; z-index: 3;
+    display: grid; place-items: center;
+    font-size: 42px; font-weight: 900; letter-spacing: 0.12em;
+    color: #ff6b6b; text-shadow: 0 0 20px #ff000077;
+    pointer-events: none;
+    animation: failpop 950ms ease-out forwards;
+  }
+  @keyframes failpop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    18%  { transform: scale(1.06); opacity: 1; }
+    70%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
   .ground {
     position: absolute; left: 0; right: 0; bottom: 0; height: 74px;
     background: linear-gradient(#191f2e, #131826);
@@ -85,10 +109,15 @@
     position: relative;
     width: 100px; margin-left: 2%;
     display: flex; flex-direction: column; align-items: center;
-    /* 위아래 반동과 달려들기를 한 애니메이션에 합쳤다.
-       transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
-    animation: brawl 1100ms ease-in-out infinite;
   }
+  /* 세 동작은 JS가 매 공격 주기마다 다시 튼다(playAttack).
+     무한 반복으로 두면 CSS 시계와 JS 시계가 따로 흘러서,
+     체력이 깎이는 순간과 때리는 동작이 어긋난다. */
+  .stage.atk .unit  { animation: brawl 1100ms ease-in-out; }
+  .stage.atk .weap  { animation: swing 1100ms ease-in-out; }
+  .stage.atk .ebody { animation: foeAct 1100ms ease-in-out; }
+  /* 위아래 반동과 달려들기를 한 애니메이션에 합쳤다.
+     transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
   @keyframes brawl {
     0%   { transform: translate(0, 0); }
     35%  { transform: translate(0, -7px); }
@@ -124,7 +153,6 @@
     position: absolute; right: -12px; bottom: 14px;
     font-size: 21px; line-height: 1;
     transform-origin: 50% 85%;
-    animation: swing 1100ms ease-in-out infinite;
   }
   /* 휘두르는 정점이 brawl의 달려들기(55%)와 겹치게 맞췄다 */
   @keyframes swing {
@@ -170,7 +198,6 @@
     font-size: 40px; line-height: 1;
     /* 슬라임과 같은 1100ms 주기. 맞고(62%) → 반격하고(88%)를 한 애니메이션에 담았다.
        transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
-    animation: foeAct 1100ms ease-in-out infinite;
   }
   @keyframes foeAct {
     0%, 45% { transform: translate(0, 0) scale(1); filter: none; }
@@ -313,16 +340,32 @@
      transform/opacity만 움직여서 레이아웃 재계산을 피한다. */
   .fx { position: absolute; pointer-events: none; will-change: transform, opacity; }
 
-  .ring {
-    width: 18px; height: 18px; margin: -9px 0 0 -9px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    animation: ring 420ms ease-out forwards;
+  /* 조준 과녁. 크게 벌어진 채로 나타나 조여들며 고정됐다가 사라진다.
+     자식들은 부모가 지워질 때 같이 사라지므로 정리 리스너는 부모에만 붙인다. */
+  .target {
+    width: 46px; height: 46px; margin: -23px 0 0 -23px;
+    animation: lock 520ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
   }
-  .ring.crit { border-color: var(--gold); border-width: 3px; }
-  @keyframes ring {
-    from { transform: scale(0.4); opacity: 0.9; }
-    to   { transform: scale(4.2); opacity: 0; }
+  .target span { position: absolute; }
+  .target .r1, .target .r2 { border: 2px solid var(--accent); border-radius: 50%; }
+  .target .r1 { inset: 0; }
+  .target .r2 { inset: 32%; border-width: 1.5px; opacity: 0.8; }
+  /* 십자 눈금 — 바깥 링 밖에서 안쪽을 겨눈다 */
+  .target .k { background: var(--accent); }
+  .target .k.v { width: 2px; height: 10px; left: 50%; margin-left: -1px; }
+  .target .k.h { height: 2px; width: 10px; top: 50%; margin-top: -1px; }
+  .target .k.t { top: -6px; }
+  .target .k.b { bottom: -6px; }
+  .target .k.l { left: -6px; }
+  .target .k.r { right: -6px; }
+  .target.crit { filter: drop-shadow(0 0 7px #ffd36e99); }
+  .target.crit .r1, .target.crit .r2 { border-color: var(--gold); }
+  .target.crit .k { background: var(--gold); }
+  @keyframes lock {
+    0%   { transform: scale(2.1) rotate(-30deg); opacity: 0; }
+    30%  { opacity: 1; }
+    62%  { transform: scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: scale(1.18) rotate(0deg); opacity: 0; }
   }
 
   .bit {
@@ -457,7 +500,7 @@
 
   /* ---- 무기상점 ---- */
   /* 스탯 바로 아래, 왼쪽 정렬. button의 width:100%를 되돌려야 내용만큼만 차지한다 */
-  .shoprow { display: flex; gap: 8px; margin-bottom: 14px; }
+  .shoprow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .shoplink {
     width: auto;
     display: inline-flex; align-items: center; gap: 7px;
@@ -507,7 +550,14 @@
   /* 장착 중인 무기는 누를 일이 없어 비활성이지만, 흐려지면 오히려 눈에 안 띈다 */
   .w.equipped:disabled { opacity: 1; }
 
-  .rebirth { margin-top: 14px; text-align: center; font-weight: 700; border-color: #6a4fa8; background: #2c2340; }
+  /* 환생은 모달 밖, 상점 버튼들과 같은 줄에 둔다 */
+  .rebirth {
+    width: auto;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 700;
+    padding: 9px 13px;
+    border-color: #6a4fa8; background: #2c2340;
+  }
   .rebirth:hover:not(:disabled) { background: #3a2d55; }
   .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
   .warn { color: var(--gold); }
@@ -558,11 +608,13 @@
     <div class="shoprow">
       <button class="shoplink" id="upbtn" aria-label="강화 열기">🔧 강화</button>
       <button class="shoplink" id="shopbtn" aria-label="무기상점 열기">⚔️ 무기상점</button>
+      <button class="rebirth" id="rebirth">환생</button>
     </div>
 
     <div class="panel stage" id="stage">
       <div class="stagetop">
         <span class="floor" id="s-floor">1층</span>
+        <span class="timer" id="s-timer">20.0s</span>
         <span class="hint">슬라임을 클릭해서 때려 주세요</span>
       </div>
       <div class="ground"></div>
@@ -621,7 +673,7 @@
 
     <div class="tabs" id="uptabs" role="tablist">
       <button data-tab="normal" class="on">업그레이드</button>
-      <button data-tab="soul"><span class="gem sm"></span> 영혼</button>
+      <button data-tab="soul"><span class="gem sm"></span> 영혼 강화</button>
     </div>
 
     <div class="tabbody" id="tab-normal">
@@ -643,9 +695,8 @@
         <span class="subtle">보유 · 전체 배율 <b id="s-soulmult">x1.00</b></span>
       </div>
       <div class="shop" id="soulshop"></div>
-      <button class="rebirth" id="rebirth">환생</button>
-      <p class="note">환생하면 레벨과 일반 업그레이드가 초기화되고 <b>영혼</b>을 얻습니다.
-        레벨이 높을수록 더 많이 받습니다.<br>무기와 영혼 강화는 그대로 남습니다.</p>
+      <p class="note">여기서 산 강화는 <b>환생해도 사라지지 않습니다.</b> 능력치가 영구히 올라갑니다.<br>
+        환생하면 레벨과 일반 업그레이드만 초기화되고, 레벨 5당 영혼 1개를 받습니다.</p>
     </div>
   </div>
 </div>
@@ -773,6 +824,13 @@ const dmgOfStage    = s => 0.35 * Math.pow(s, 1.05);
 const HP_REGEN = 0.05;   // 초당 최대 체력의 5% (완전 회복까지 20초)
 const STUN_SEC = 2.5;    // 쓰러진 뒤 못 움직이는 시간
 const RETREAT  = 3;      // 쓰러지면 물러나는 층 수
+
+// 공격 주기 — CSS 애니메이션(brawl/swing/foeAct)과 같은 값이어야 한다.
+// JS가 매 주기 애니메이션을 다시 틀기 때문에 둘이 어긋날 일은 없지만,
+// HIT_DELAY는 brawl의 달려드는 시점(55%)에 맞춰 둔 값이다.
+const HIT_PERIOD = 1.1;
+const HIT_DELAY  = 0.6;
+const FLOOR_TIME = 20;   // 층당 제한 시간(초)
 const monsterOf     = s => MONSTERS[(s - 1) % MONSTERS.length];
 const tierOfStage   = s => Math.min(Math.floor((s - 1) / MONSTERS.length), TIERS.length - 1);
 const nameOfStage   = s => TIERS[tierOfStage(s)] + monsterOf(s).name;
@@ -867,9 +925,8 @@ function stepsFor(u) {
   const want = buyMode === 'max' ? Infinity : buyMode;
   return Math.min(want, roomLeft(u), affordable(u));
 }
-// 레벨이 높을수록 가파르게 더 준다. 예전 sqrt 곡선은 레벨 20에 2개,
-// 레벨 200에 6개라 '더 키우고 환생할 이유'가 거의 없었다.
-const soulGain  = () => Math.max(1, Math.floor(Math.pow(state.level / REBIRTH_LEVEL, 1.5)));
+// 레벨 5당 영혼 1개. 환생 최소 레벨이 20이므로 최소 4개부터 시작한다.
+const soulGain  = () => Math.floor(state.level / 5);
 
 /* ============================================================
    4. 행동
@@ -901,31 +958,64 @@ function feed() {
 /* 서로 초당 피해를 주고받는다. 슬라임이 쓰러지면 몇 층 물러나 기절했다가
    완전 회복하고 다시 붙는다. 진행을 되돌리는 벌이 아니라 속도 제한 장치다 —
    방치형에서 진척이 크게 날아가면 그 자리에서 게임을 접는다. */
-let stunLeft = 0;   // 기절 남은 시간(초). 연출용이라 저장하지 않는다.
+// 전투 진행 상태 — 전부 세이브에 넣지 않는다. 새로고침하면 그 층을 처음부터 다시 한다.
+let stunLeft = 0;            // 기절 남은 시간(초)
+let floorT   = FLOOR_TIME;   // 이번 층에 남은 제한 시간(초)
+let cycleT   = 0;            // 이번 공격 주기의 경과 시간(초)
+let struck   = false;        // 이번 주기에 이미 때렸는가
+
+/* 층을 (다시) 시작한다. 몬스터 체력·제한 시간·공격 주기를 한꺼번에 되돌린다.
+   층이 바뀌는 모든 경로(격파·시간초과·쓰러짐)가 여기를 지난다. */
+function startFloor() {
+  state.monsterHp = hpOfStage(state.stage);
+  floorT = FLOOR_TIME;
+  cycleT = 0;
+  struck = false;
+  playAttack();
+}
 
 function fight(dt) {
   if (stunLeft > 0) { stunLeft = Math.max(0, stunLeft - dt); return; }
 
+  // 슬라임이 받는 피해와 재생은 연속이다. 이쪽까지 끊어서 넣으면
+  // '재생 >= 피해면 안 죽는다'는 생존 규칙이 운에 흔들린다.
   const max = slimeMaxHp();
   state.hp = Math.min(max, state.hp + max * HP_REGEN * dt);
   state.hp -= dmgOfStage(state.stage) * dt;
   if (state.hp <= 0) {
     state.stage = Math.max(1, state.stage - RETREAT);
-    state.monsterHp = hpOfStage(state.stage);
     state.hp = slimeMaxHp();
     stunLeft = STUN_SEC;
+    startFloor();
     note(`슬라임이 쓰러졌습니다. ${state.stage}층으로 물러납니다.`, true);
     return;
   }
 
-  state.monsterHp -= atk() * dt;
-  // 공격력이 높으면 한 프레임에 여러 마리를 넘길 수 있어 반복 처리한다.
-  // guard는 혹시 체력이 0 이하로 굳었을 때 화면이 멈추는 것을 막는 안전장치다.
-  for (let guard = 0; state.monsterHp <= 0 && guard < 500; guard++) {
-    state.jelly += rewardOfStage(state.stage);
-    state.stage++;
-    state.monsterHp += hpOfStage(state.stage);
+  // 제한 시간 안에 못 잡으면 실패 — 같은 층을 처음부터 다시 한다
+  floorT -= dt;
+  if (floorT <= 0) {
+    failFx();
+    note(`시간 초과! ${state.stage}층을 다시 도전합니다.`, true);
+    startFloor();
+    return;
   }
+
+  /* 피해는 공격 모션이 닿는 순간에 한 번, 공격력만큼만 들어간다.
+     예전처럼 초당 피해로 깎으면 체력바가 스르륵 줄어서 때리는 동작과 따로 논다.
+     한 번의 타격으로 잡을 수 있는 몬스터는 최대 한 마리다 — 넘치는 피해는 버린다.
+     그래야 한 프레임에 수십 층이 날아가지 않고 제한 시간도 의미를 갖는다. */
+  cycleT += dt;
+  if (!struck && cycleT >= HIT_DELAY) {
+    struck = true;
+    state.monsterHp -= atk();
+    if (state.monsterHp <= 0) {
+      state.jelly += rewardOfStage(state.stage) * sJelly();
+      state.stage++;
+      startFloor();
+      return;
+    }
+  }
+  if (cycleT >= HIT_PERIOD) { cycleT -= HIT_PERIOD; struck = false; playAttack(); }
 }
 
 function buy(u) {
@@ -966,6 +1056,7 @@ function rebirth() {
   Object.assign(state, { souls, soulsTotal, soulUp, weapons, equipped });
   state.hp = slimeMaxHp();
   stunLeft = 0;
+  startFloor();
   note(`환생! 영혼 ${gained}개를 얻어 전체 배율이 x${soulMult().toFixed(2)}가 되었습니다.`);
 }
 
@@ -1042,11 +1133,6 @@ function renderSoulShop() {
     r.cost.textContent = maxed ? 'MAX' : `${cost} 영혼`;
     r.b.disabled = maxed || state.souls < cost;
   }
-  const rb = $('rebirth');
-  rb.disabled = state.level < REBIRTH_LEVEL;
-  rb.textContent = rb.disabled
-    ? `환생 — 레벨 ${REBIRTH_LEVEL} 필요`
-    : `환생 — 영혼 +${soulGain()}`;
 }
 
 // 무기 목록도 최초 1회만 만든다
@@ -1094,6 +1180,8 @@ function render() {
   const maxHp = hpOfStage(state.stage);
   const hp = Math.max(0, state.monsterHp);
   $('s-floor').textContent  = `${state.stage}층`;
+  $('s-timer').textContent  = Math.max(0, floorT).toFixed(1) + 's';
+  $('s-timer').classList.toggle('warn', floorT <= 5);
   $('e-hp').textContent     = `${fmt(hp)} / ${fmt(maxHp)}`;
   $('e-hpbar').style.width  = Math.min(100, hp / maxHp * 100) + '%';
   $('s-lvtag').textContent  = `Lv.${state.level}`;
@@ -1113,6 +1201,13 @@ function render() {
   $('s-expbar').style.width = Math.min(100, state.exp / need * 100) + '%';
   $('feed').disabled = state.jelly < 1;
   $('s-souls').textContent = state.souls;
+
+  // 환생 버튼은 모달 밖이라 항상 갱신한다
+  const rb = $('rebirth');
+  rb.disabled = state.level < REBIRTH_LEVEL;
+  rb.textContent = rb.disabled
+    ? `♻️ 환생 · Lv.${REBIRTH_LEVEL} 필요`
+    : `♻️ 환생 · 영혼 +${soulGain()}`;
 
   if (!$('upshop').hidden) renderUpgrades();
 
@@ -1177,6 +1272,20 @@ function restartAnim(el, cls) {
   el.classList.remove(cls);
   void el.offsetWidth;
   el.classList.add(cls);
+}
+
+// 공격 애니메이션 세 개를 처음부터 다시 튼다. 기절 중에는 멈춰 있어야 하므로 건너뛴다.
+function playAttack() {
+  if (stunLeft > 0) return;
+  restartAnim($('stage'), 'atk');
+}
+
+function failFx() {
+  const el = document.createElement('div');
+  el.className = 'failfx';
+  el.textContent = 'FAIL';
+  $('stage').appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
 }
 
 function slainFx() {
@@ -1288,7 +1397,13 @@ function burst(x, y, crit) {
     el.addEventListener('animationend', () => el.remove());
   };
 
-  add('ring', el => { el.style.left = left + 'px'; el.style.top = top + 'px'; });
+  add('target', el => {
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    el.innerHTML = '<span class="r1"></span><span class="r2"></span>' +
+                   '<span class="k v t"></span><span class="k v b"></span>' +
+                   '<span class="k h l"></span><span class="k h r"></span>';
+  });
 
   for (let i = 0, n = crit ? 10 : 5; i < n; i++) {
     add('bit', el => {
@@ -1363,6 +1478,7 @@ $('rebirth').onclick = () => {
 };
 
 load();
+startFloor();          // 제한 시간·공격 주기를 켠 상태로 시작한다
 layoutArena();
 addEventListener('resize', layoutArena);
 setInterval(save, 5000);
