@@ -30,16 +30,8 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
-  .game {
-    width: 100%;
-    max-width: 880px;
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 18px;
-  }
-  @media (max-width: 760px) {
-    .game { grid-template-columns: 1fr; }
-  }
+  /* 업그레이드가 모달로 빠지면서 사이드바가 사라졌다 — 한 칸짜리 레이아웃 */
+  .game { width: 100%; max-width: 560px; }
 
   h1 { font-size: 20px; margin: 0 0 14px; letter-spacing: -0.02em; }
   h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
@@ -366,10 +358,40 @@
 
 
   /* ---- 머리말 ---- */
-  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .head h1 { margin: 0; }
-  .credit { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .headright { display: flex; align-items: center; gap: 12px; }
+  .credits { text-align: right; }
+  .credit { font-size: 11px; color: var(--muted); white-space: nowrap; line-height: 1.5; }
   .credit b { color: var(--accent); font-weight: 700; }
+
+  /* ---- 영혼 보석 ----
+     이모지 대신 clip-path로 깎았다. 이모지는 기기마다 그림이 달라서
+     같은 게임이 폰과 PC에서 다르게 보인다. */
+  .gem {
+    display: inline-block; position: relative;
+    width: 13px; height: 15px;
+    background: linear-gradient(150deg, #ead9ff 0%, #b98cff 36%, #7c3aed 68%, #4c1d95 100%);
+    clip-path: polygon(50% 0%, 90% 32%, 72% 100%, 28% 100%, 10% 32%);
+    filter: drop-shadow(0 0 4px #a855f777);
+    vertical-align: -2px;
+    flex: none;
+  }
+  /* 컷면에 걸린 빛. 부모의 clip-path가 이 자식도 같이 잘라 준다. */
+  .gem::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(112deg, transparent 40%, #ffffff99 46%, transparent 53%);
+  }
+  .gem.sm { width: 10px; height: 12px; vertical-align: -1px; }
+  .gem.lg { width: 18px; height: 21px; vertical-align: -4px; }
+
+  .souls {
+    display: flex; align-items: center; gap: 6px;
+    background: #0006; border: 1px solid #4c1d95;
+    border-radius: 99px; padding: 4px 11px 4px 9px;
+    font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  .souls b { color: #d8b4fe; font-weight: 700; }
 
   /* ---- 버튼 ---- */
   button {
@@ -391,6 +413,28 @@
   }
   .feed:hover:not(:disabled) { background: linear-gradient(#37b57b, #2a9264); }
 
+  /* ---- 강화 창 탭 ---- */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tabs button {
+    flex: 1; width: auto; text-align: center;
+    font-size: 13px; font-weight: 700;
+    padding: 9px 10px;
+  }
+  .tabs button.on { background: var(--accent-dim); border-color: var(--accent); color: #eafff4; }
+  .tabbody { display: flex; flex-direction: column; min-height: 0; }
+  .tabbody[hidden] { display: none; }
+  .subtle { font-size: 11px; color: var(--muted); }
+  .soulbar {
+    display: flex; align-items: center; gap: 8px;
+    background: #1a1330; border: 1px solid #4c1d95;
+    border-radius: 10px; padding: 9px 12px; margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .soulbar b { color: #d8b4fe; font-variant-numeric: tabular-nums; }
+  .soulbar .subtle b { color: var(--accent); }
+  /* 영혼으로 사는 줄은 가격 색을 보석과 맞춘다 */
+  #soulshop .cost { color: #d8b4fe; }
+
   /* ---- 일괄 구매 토글 ---- */
   .shophead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
   .shophead h2 { margin: 0; }
@@ -403,7 +447,8 @@
   }
   .modes button.on { background: var(--accent-dim); border-color: var(--accent); color: #eafff4; }
 
-  .shop { display: flex; flex-direction: column; gap: 8px; }
+  /* 모달 안에서 목록만 스크롤되게 한다 — 시트 전체가 늘어나면 안 된다 */
+  .shop { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
   .up { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .up .name { font-weight: 600; font-size: 14px; }
   .up .desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
@@ -412,12 +457,12 @@
 
   /* ---- 무기상점 ---- */
   /* 스탯 바로 아래, 왼쪽 정렬. button의 width:100%를 되돌려야 내용만큼만 차지한다 */
+  .shoprow { display: flex; gap: 8px; margin-bottom: 14px; }
   .shoplink {
     width: auto;
     display: inline-flex; align-items: center; gap: 7px;
     font-size: 13px; font-weight: 600;
     padding: 9px 13px;
-    margin-bottom: 14px;
   }
   .iconbtn {
     width: 38px; height: 38px; padding: 0;
@@ -490,7 +535,15 @@
   <main>
     <div class="head">
       <h1>🟢 슬라임 키우기</h1>
-      <div class="credit">제작자 <b>희선</b></div>
+      <div class="headright">
+        <div class="souls" title="보유 영혼">
+          <span class="gem"></span><b id="s-souls">0</b>
+        </div>
+        <div class="credits">
+          <div class="credit">은표 · 일정</div>
+          <div class="credit">제작자 <b>희선</b></div>
+        </div>
+      </div>
     </div>
 
     <div class="stats">
@@ -502,7 +555,10 @@
       <div class="stat"><div class="k">무기</div><div class="v sm" id="s-weapon">맨손</div></div>
     </div>
 
-    <button class="shoplink" id="shopbtn" aria-label="무기상점 열기">⚔️ 무기상점</button>
+    <div class="shoprow">
+      <button class="shoplink" id="upbtn" aria-label="강화 열기">🔧 강화</button>
+      <button class="shoplink" id="shopbtn" aria-label="무기상점 열기">⚔️ 무기상점</button>
+    </div>
 
     <div class="panel stage" id="stage">
       <div class="stagetop">
@@ -554,19 +610,44 @@
     <p class="note" id="note"></p>
   </main>
 
-  <aside class="panel">
-    <div class="shophead">
-      <h2>업그레이드</h2>
-      <div class="modes" id="modes" role="group" aria-label="한 번에 살 단계 수">
-        <button data-mode="1" class="on">×1</button>
-        <button data-mode="10">×10</button>
-        <button data-mode="max">최대</button>
-      </div>
+</div>
+
+<div class="modal" id="upshop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="upshop-title">
+    <div class="sheethead">
+      <h2 id="upshop-title">🔧 강화</h2>
+      <button class="iconbtn" id="upshop-close" aria-label="닫기">✕</button>
     </div>
-    <div class="shop" id="shop"></div>
-    <button class="rebirth" id="rebirth">환생</button>
-    <p class="note">환생하면 레벨과 업그레이드가 초기화되고, <b>영혼</b>이 남아 모든 획득량이 영구히 늘어납니다.<br>영혼 <b id="s-souls">0</b>개 · 전체 배율 <b id="s-soulmult">x1.00</b></p>
-  </aside>
+
+    <div class="tabs" id="uptabs" role="tablist">
+      <button data-tab="normal" class="on">업그레이드</button>
+      <button data-tab="soul"><span class="gem sm"></span> 영혼</button>
+    </div>
+
+    <div class="tabbody" id="tab-normal">
+      <div class="shophead">
+        <span class="subtle">젤리로 강화합니다</span>
+        <div class="modes" id="modes" role="group" aria-label="한 번에 살 단계 수">
+          <button data-mode="1" class="on">×1</button>
+          <button data-mode="10">×10</button>
+          <button data-mode="max">최대</button>
+        </div>
+      </div>
+      <div class="shop" id="shop"></div>
+    </div>
+
+    <div class="tabbody" id="tab-soul" hidden>
+      <div class="soulbar">
+        <span class="gem lg"></span>
+        <b id="s-souls2">0</b>
+        <span class="subtle">보유 · 전체 배율 <b id="s-soulmult">x1.00</b></span>
+      </div>
+      <div class="shop" id="soulshop"></div>
+      <button class="rebirth" id="rebirth">환생</button>
+      <p class="note">환생하면 레벨과 일반 업그레이드가 초기화되고 <b>영혼</b>을 얻습니다.
+        레벨이 높을수록 더 많이 받습니다.<br>무기와 영혼 강화는 그대로 남습니다.</p>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="wshop" hidden>
@@ -594,9 +675,9 @@ const CRIT_MULT   = 2;      // 터졌을 때 배수
 const CRIT_BASE   = 0.05;   // 업그레이드 0단계에서도 가끔 터져야 존재를 알아챈다
 const CRIT_STEP   = 0.04;   // 단계당 상승폭
 const CRIT_UP_CAP = 0.75;   // '행운'만으로 도달 가능한 상한 (18단계)
-const CRIT_CAP    = 0.90;   // 무기까지 더한 전체 상한
-// 최고 무기의 크리(+15%)를 더하면 정확히 CRIT_CAP에 닿는다.
-// 이렇게 맞춰야 마지막 무기가 "이미 상한이라 의미 없는" 물건이 되지 않는다.
+const CRIT_CAP    = 0.95;   // 무기·영혼까지 더한 전체 상한
+// 행운 75% + 최고 무기 15% + 영혼의 예리함 5% = 정확히 CRIT_CAP.
+// 이렇게 맞춰야 마지막 무기도 영혼 강화도 "이미 상한이라 의미 없는" 물건이 되지 않는다.
 const critOf = n => Math.min(CRIT_UP_CAP, CRIT_BASE + CRIT_STEP * n);
 
 const UPGRADES = [
@@ -615,6 +696,23 @@ const UPGRADES = [
     desc: n => `공격력 +${n * 2}` },
   { id: 'vit',    name: '체력 단련', base: 90, growth: 1.20,
     desc: n => `최대 체력 +${n * 30}` },
+];
+
+/* 영혼 강화 — 환생으로 얻은 영혼으로 산다.
+   일반 업그레이드가 덧셈이라면 이쪽은 곱셈이라, 판을 거듭할수록 효과가 커진다.
+   환생해도 사라지지 않는다(rebirth 참고). */
+const SOUL_UPGRADES = [
+  { id: 'sjelly', name: '영혼의 축복',   base: 1, growth: 1.6,
+    desc: n => `모든 젤리 획득 +${n * 10}%` },
+  { id: 'satk',   name: '영혼의 검기',   base: 2, growth: 1.6,
+    desc: n => `공격력 +${n * 15}%` },
+  { id: 'svit',   name: '영혼의 심장',   base: 2, growth: 1.6,
+    desc: n => `최대 체력 +${n * 20}%` },
+  { id: 'sexp',   name: '영혼의 지혜',   base: 3, growth: 1.7,
+    desc: n => `먹이 경험치 +${n * 15}%` },
+  { id: 'scrit',  name: '영혼의 예리함', base: 4, growth: 1.8,
+    desc: n => `크리티컬 확률 +${(n * 0.5).toFixed(1)}%`,
+    maxed: n => n >= 10 },
 ];
 
 /* 무기 — 업그레이드와 달리 한 번만 사고, 하나만 장착한다.
@@ -697,6 +795,8 @@ function freshState() {
     hp: 120,           // 최대 체력은 slimeMaxHp()가 계산한다. load에서 상한을 맞춘다.
     // UPGRADES 표에서 자동으로 만든다 — 표에 행을 추가하면 여기도 따라온다
     up: Object.fromEntries(UPGRADES.map(u => [u.id, 0])),
+    soulUp: Object.fromEntries(SOUL_UPGRADES.map(u => [u.id, 0])),
+    soulsTotal: 0,     // 지금까지 얻은 영혼의 총합. 전체 배율은 이쪽을 본다.
     weapons: [],       // 보유한 무기 id 목록
     equipped: null,    // 장착 중인 무기 id (없으면 맨손)
     lastSeen: Date.now(),
@@ -708,16 +808,26 @@ let state = freshState();
    3. 파생 수치 — 상태에서 계산만 하고 절대 저장하지 않는다
    ============================================================ */
 const levelMult = () => 1 + 0.05 * (state.level - 1);
-const soulMult  = () => 1 + 0.10 * state.souls;
-const perClick  = () => (1 + state.up.pat) * levelMult() * soulMult();
+// 전체 배율은 '지금까지 얻은' 영혼을 본다. 영혼을 강화에 써도 이 배율은 줄지 않는다.
+// 쓸지 말지를 저울질하게 만들면 영혼 상점을 아예 안 쓰게 된다.
+const soulMult  = () => 1 + 0.10 * state.soulsTotal;
+
+// 영혼 강화 — 전부 곱셈(예리함만 가산)
+const sJelly = () => 1 + 0.10 * state.soulUp.sjelly;
+const sAtk   = () => 1 + 0.15 * state.soulUp.satk;
+const sVit   = () => 1 + 0.20 * state.soulUp.svit;
+const sExp   = () => 1 + 0.15 * state.soulUp.sexp;
+const sCrit  = () => 0.005 * state.soulUp.scrit;
+const soulCostOf = u => Math.floor(u.base * Math.pow(u.growth, state.soulUp[u.id]));
+const perClick  = () => (1 + state.up.pat) * levelMult() * soulMult() * sJelly();
 const weaponOf   = () => WEAPONS.find(w => w.id === state.equipped) || null;
 const weaponAtk  = () => weaponOf()?.atk ?? 0;
 const weaponCrit = () => weaponOf()?.crit ?? 0;
-const critChance = () => Math.min(CRIT_CAP, critOf(state.up.crit) + weaponCrit());
-const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult();
-const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult();
-const atk        = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult();
-const slimeMaxHp = () => (120 + 30 * state.up.vit) * levelMult() * soulMult();
+const critChance = () => Math.min(CRIT_CAP, critOf(state.up.crit) + weaponCrit() + sCrit());
+const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult() * sJelly();
+const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult() * sExp();
+const atk        = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult() * sAtk();
+const slimeMaxHp = () => (120 + 30 * state.up.vit) * levelMult() * soulMult() * sVit();
 const expToNext = () => Math.floor(50 * Math.pow(state.level, 1.6));
 // 한 번에 몇 단계씩 살지: 1 | 10 | 'max'.
 // 게임 진행이 아니라 화면 조작 상태라 state에 넣지 않는다(= 세이브되지 않는다).
@@ -757,7 +867,9 @@ function stepsFor(u) {
   const want = buyMode === 'max' ? Infinity : buyMode;
   return Math.min(want, roomLeft(u), affordable(u));
 }
-const soulGain  = () => Math.max(1, Math.floor(Math.sqrt(state.level / 5)));
+// 레벨이 높을수록 가파르게 더 준다. 예전 sqrt 곡선은 레벨 20에 2개,
+// 레벨 200에 6개라 '더 키우고 환생할 이유'가 거의 없었다.
+const soulGain  = () => Math.max(1, Math.floor(Math.pow(state.level / REBIRTH_LEVEL, 1.5)));
 
 /* ============================================================
    4. 행동
@@ -834,17 +946,24 @@ function buyWeapon(w) {
   note(`${w.icon} ${w.name}을(를) 손에 넣었습니다!`);
 }
 
+function buySoul(u) {
+  if (u.maxed && u.maxed(state.soulUp[u.id])) return;
+  const cost = soulCostOf(u);
+  if (state.souls < cost) return;
+  state.souls -= cost;
+  state.soulUp[u.id]++;
+}
+
 function rebirth() {
   if (state.level < REBIRTH_LEVEL) return;
   const gained = soulGain();
-  const souls = state.souls + gained;
-  // 무기는 영혼과 함께 판을 넘어 살아남는다. 매번 다시 사야 한다면
+  // 무기·영혼 강화는 판을 넘어 살아남는다. 매번 다시 사야 한다면
   // 5억짜리 낫을 살 이유가 없어지고 상점 자체가 죽는다.
-  const { weapons, equipped } = state;
+  const { weapons, equipped, soulUp } = state;
+  const souls = state.souls + gained;
+  const soulsTotal = state.soulsTotal + gained;
   state = freshState();
-  state.souls = souls;
-  state.weapons = weapons;
-  state.equipped = equipped;
+  Object.assign(state, { souls, soulsTotal, soulUp, weapons, equipped });
   state.hp = slimeMaxHp();
   stunLeft = 0;
   note(`환생! 영혼 ${gained}개를 얻어 전체 배율이 x${soulMult().toFixed(2)}가 되었습니다.`);
@@ -879,6 +998,56 @@ const rows = UPGRADES.map(u => {
   shopEl.appendChild(b);
   return { u, b, lv: b.querySelector('.lv'), desc: b.querySelector('.desc'), cost: b.querySelector('.cost') };
 });
+
+// 열려 있는 탭만 갱신한다. 두 목록을 매 프레임 다 도는 건 낭비다.
+function renderUpgrades() {
+  if (!$('tab-normal').hidden) {
+    for (const r of rows) {
+      const n = state.up[r.u.id];
+      const room = roomLeft(r.u);      // 0이면 상한까지 다 찍었다
+      const k = stepsFor(r.u);         // 지금 누르면 실제로 오르는 단계 수
+      // 못 사는 상황에서도 다음 한 단계 가격은 보여 줘야 목표가 생긴다
+      const shown = Math.max(1, k);
+      r.lv.textContent = n ? `Lv.${n}` : '';
+      r.desc.textContent = r.u.desc(n);
+      r.cost.textContent = room === 0 ? 'MAX'
+                         : shown > 1   ? `×${shown} · ${fmt(costOfMany(r.u, shown))}`
+                         : fmt(costOfMany(r.u, 1));
+      r.b.disabled = k < 1;
+    }
+  }
+  if (!$('tab-soul').hidden) renderSoulShop();
+}
+
+// 영혼 강화 목록. 일반 업그레이드와 마크업이 같아 만드는 방식도 같다.
+const soulRows = SOUL_UPGRADES.map(u => {
+  const b = document.createElement('button');
+  b.className = 'up';
+  b.innerHTML = `<span><span class="name">${u.name}</span> <span class="lv"></span>
+                 <div class="desc"></div></span><span class="cost"></span>`;
+  b.onclick = () => buySoul(u);
+  $('soulshop').appendChild(b);
+  return { u, b, lv: b.querySelector('.lv'), desc: b.querySelector('.desc'), cost: b.querySelector('.cost') };
+});
+
+function renderSoulShop() {
+  $('s-souls2').textContent = state.souls;
+  $('s-soulmult').textContent = 'x' + soulMult().toFixed(2);
+  for (const r of soulRows) {
+    const n = state.soulUp[r.u.id];
+    const maxed = r.u.maxed ? r.u.maxed(n) : false;
+    const cost = soulCostOf(r.u);
+    r.lv.textContent = n ? `Lv.${n}` : '';
+    r.desc.textContent = r.u.desc(n);
+    r.cost.textContent = maxed ? 'MAX' : `${cost} 영혼`;
+    r.b.disabled = maxed || state.souls < cost;
+  }
+  const rb = $('rebirth');
+  rb.disabled = state.level < REBIRTH_LEVEL;
+  rb.textContent = rb.disabled
+    ? `환생 — 레벨 ${REBIRTH_LEVEL} 필요`
+    : `환생 — 영혼 +${soulGain()}`;
+}
 
 // 무기 목록도 최초 1회만 만든다
 const wlistEl = $('wlist');
@@ -944,27 +1113,8 @@ function render() {
   $('s-expbar').style.width = Math.min(100, state.exp / need * 100) + '%';
   $('feed').disabled = state.jelly < 1;
   $('s-souls').textContent = state.souls;
-  $('s-soulmult').textContent = 'x' + soulMult().toFixed(2);
 
-  for (const r of rows) {
-    const n = state.up[r.u.id];
-    const room = roomLeft(r.u);        // 0이면 상한까지 다 찍었다
-    const k = stepsFor(r.u);           // 지금 누르면 실제로 오르는 단계 수
-    // 못 사는 상황에서도 다음 한 단계 가격은 보여 줘야 목표가 생긴다
-    const shown = Math.max(1, k);
-    r.lv.textContent = n ? `Lv.${n}` : '';
-    r.desc.textContent = r.u.desc(n);
-    r.cost.textContent = room === 0 ? 'MAX'
-                       : shown > 1   ? `×${shown} · ${fmt(costOfMany(r.u, shown))}`
-                       : fmt(costOfMany(r.u, 1));
-    r.b.disabled = k < 1;
-  }
-
-  const rb = $('rebirth');
-  rb.disabled = state.level < REBIRTH_LEVEL;
-  rb.textContent = rb.disabled
-    ? `환생 — 레벨 ${REBIRTH_LEVEL} 필요`
-    : `환생 — 영혼 +${soulGain()}`;
+  if (!$('upshop').hidden) renderUpgrades();
 
   // 레벨이 오를수록 커지고 색이 변한다.
   // 색조는 .slime에만 건다 — .sizer에 걸면 그 안의 무기 이모지까지 물든다.
@@ -1068,10 +1218,15 @@ function load() {
   try {
     // 세이브에 없는 필드는 기본값으로 채운다 — 업데이트 후에도 옛 세이브가 살아남게.
     saved = JSON.parse(raw);
-    state = { ...freshState(), ...saved, up: { ...freshState().up, ...(saved.up || {}) } };
+    const base = freshState();
+    state = { ...base, ...saved,
+      up:     { ...base.up,     ...(saved.up     || {}) },
+      soulUp: { ...base.soulUp, ...(saved.soulUp || {}) } };
   } catch {
     return;
   }
+  // 영혼 상점 이전 세이브에는 soulsTotal이 없다. 그때는 보유량이 곧 총합이었다.
+  if (typeof saved.soulsTotal !== 'number') state.soulsTotal = state.souls;
   const secs = Math.max(0, (Date.now() - state.lastSeen) / 1000);
   const capped = Math.min(secs, OFFLINE_CAP_H * 3600);
 
@@ -1181,14 +1336,27 @@ $('modes').addEventListener('click', e => {
   for (const el of $('modes').children) el.classList.toggle('on', el === b);
 });
 
-const wshop = $('wshop');
-const openShop  = () => { wshop.hidden = false; renderShop(); };
-const closeShop = () => { wshop.hidden = true; };
-$('shopbtn').onclick = openShop;
-$('wshop-close').onclick = closeShop;
-// 시트 바깥(어두운 배경)을 눌렀을 때만 닫는다
-wshop.addEventListener('pointerdown', e => { if (e.target === wshop) closeShop(); });
-addEventListener('keydown', e => { if (e.key === 'Escape' && !wshop.hidden) closeShop(); });
+/* 모달 두 개가 같은 규칙으로 열리고 닫힌다:
+   버튼 / ✕ / 배경 클릭 / Esc. 시트 안쪽 클릭으로는 닫히지 않는다. */
+function wireModal(id, openerId, onOpen) {
+  const m = $(id);
+  const close = () => { m.hidden = true; };
+  $(openerId).onclick = () => { m.hidden = false; onOpen(); };
+  $(id + '-close').onclick = close;
+  m.addEventListener('pointerdown', e => { if (e.target === m) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden) close(); });
+}
+wireModal('wshop', 'shopbtn', renderShop);
+wireModal('upshop', 'upbtn', renderUpgrades);
+
+$('uptabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  for (const el of $('uptabs').children) el.classList.toggle('on', el === b);
+  $('tab-normal').hidden = b.dataset.tab !== 'normal';
+  $('tab-soul').hidden   = b.dataset.tab !== 'soul';
+  renderUpgrades();
+});
 
 $('rebirth').onclick = () => {
   if (confirm(`환생하면 레벨과 업그레이드가 초기화됩니다. 영혼 ${soulGain()}개를 얻습니다. 계속할까요?`)) rebirth();
