@@ -127,14 +127,24 @@
     100% { transform: translate(0, 0); }
   }
 
-  /* 슬라임 머리 위 이름표 + 체력바. 몬스터 쪽과 폭을 맞춘다. */
-  .tagwrap { width: 104px; margin-bottom: 7px; }
-  .tagrow {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
-    margin-bottom: 4px; white-space: nowrap;
+  /* 슬라임 머리 위 이름표 + 체력바.
+     .sizer는 transform-origin이 바닥이라 확대되면 위로 자란다. 그 늘어난 만큼
+     (--rise, layoutArena가 계산) 이름표를 더 띄우지 않으면 슬라임이 덮어버린다.
+     z-index는 그래도 겹쳤을 때 글씨가 위로 오게 하는 마지막 방어선. */
+  .tagwrap {
+    position: relative; z-index: 2;
+    width: 104px;
+    margin-bottom: calc(7px + var(--rise, 0px));
   }
-  .lvtag { font-size: 11px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-  .shpnum { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* 이름과 숫자를 한 줄에 붙이면 Lv.150 · 45.2K/45.2K 같은 조합에서
+     폭을 넘겨 숫자가 잘린다. 두 줄로 쌓으면 각 줄이 폭을 다 쓴다. */
+  .lvtag, .shpnum {
+    text-align: center; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+  }
+  .lvtag { font-size: 11px; font-weight: 700; color: var(--accent); }
+  .shpnum { font-size: 9px; color: var(--muted); margin: 1px 0 4px; }
   .shp {
     height: 7px; background: #0d0f16;
     border: 1px solid var(--line); border-radius: 99px; overflow: hidden;
@@ -179,18 +189,17 @@
   .hpwrap {
     position: absolute; bottom: 100%; left: 50%;
     transform: translateX(-50%);
+    z-index: 2;
     width: 140px; margin-bottom: 8px;
   }
-  .ename {
-    display: flex; justify-content: space-between; gap: 6px;
-    font-size: 10px; color: var(--muted); margin-bottom: 4px;
-    white-space: nowrap;
+  /* 슬라임 쪽과 같은 이유로 이름과 숫자를 두 줄로 쌓았다.
+     '전설의 식인 상어' + '24.09K / 24.09K'는 한 줄에 절대 안 들어간다. */
+  .ename, .ehpnum {
+    text-align: center; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    font-size: 10px; color: var(--muted);
   }
-  /* '전설의 식인 상어' 같은 긴 이름은 고정폭을 넘긴다.
-     이름만 줄이고 체력 숫자는 절대 밀려나지 않게 한다 —
-     넘치면 무대의 overflow:hidden에 잘려서 숫자가 안 보인다. */
-  .ename > #e-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .ehpnum { flex: none; font-variant-numeric: tabular-nums; }
+  .ehpnum { font-variant-numeric: tabular-nums; margin: 1px 0 4px; }
   .ehp {
     height: 7px; background: #0d0f16;
     border: 1px solid var(--line); border-radius: 99px; overflow: hidden;
@@ -572,9 +581,9 @@
      미디어쿼리도 특이도가 같으면 순서로 이긴다 — 위쪽 @media에 두면
      아래에 나오는 .hpwrap 기본 규칙에 밀린다. 그래서 끝에 모아 뒀다. */
   @media (max-width: 760px) {
-    .hpwrap { width: 100px; }
-    .tagwrap { width: 96px; }
-    .ename { font-size: 9px; }
+    .hpwrap { width: 118px; }
+    .tagwrap { width: 106px; }
+    .ename, .ehpnum { font-size: 9px; }
   }
 
   /* 멀미·발작 민감 사용자를 위한 OS 설정을 존중한다 */
@@ -630,10 +639,8 @@
       <div class="mover advancing" id="mover">
         <div class="unit">
           <div class="tagwrap">
-            <div class="tagrow">
-              <span class="lvtag" id="s-lvtag">Lv.1</span>
-              <span class="shpnum" id="s-hpnum">120 / 120</span>
-            </div>
+            <div class="lvtag" id="s-lvtag">Lv.1</div>
+            <div class="shpnum" id="s-hpnum">120 / 120</div>
             <div class="shp" id="s-hpwrap"><i id="s-hpbar"></i></div>
           </div>
           <!-- 레벨별 확대는 .sizer가 맡는다. .slime에 직접 걸면
@@ -653,7 +660,8 @@
 
       <div class="foe entering" id="foe">
         <div class="hpwrap">
-          <div class="ename"><span id="e-name">들쥐</span><span class="ehpnum" id="e-hp">10 / 10</span></div>
+          <div class="ename" id="e-name">들쥐</div>
+          <div class="ehpnum" id="e-hp">10 / 10</div>
           <div class="ehp"><i id="e-hpbar"></i></div>
         </div>
         <div class="ebody" id="e-body">🐀</div>
@@ -1229,6 +1237,7 @@ function render() {
 // 상한을 두지 않으면 후반에 슬라임이 몬스터를 덮는다
 const slimeScale = () => Math.min(1.4, 1 + Math.log10(state.level) * 0.45);
 const SLIME_W = 92;    // .slime의 CSS 폭. 배율을 곱해 실제 폭을 낸다.
+const SLIME_H = 74;    // 높이. 확대되면 바닥 기준으로 위로만 자란다.
 const WALK_PAD = 24;   // 몬스터 앞에 남길 여유. 달려들기(15px)가 여기서 소모된다.
 const WEAP_OVERHANG = 14;  // 무기가 슬라임 오른쪽으로 삐져나오는 폭
 
@@ -1240,6 +1249,8 @@ function layoutArena() {
   const unit = document.querySelector('.unit');
   const foe = $('foe'), body = $('e-body'), hpwrap = document.querySelector('.hpwrap');
   const scale = slimeScale();
+  // 확대된 슬라임이 위로 침범하는 높이. 이름표를 그만큼 더 띄운다.
+  $('stage').style.setProperty('--rise', (SLIME_H * (scale - 1)).toFixed(1) + 'px');
   // 오른쪽으로 가장 많이 튀어나온 것을 기준으로 잡는다.
   // 몸통+무기는 배율을 받고, 이름표·체력바는 받지 않는다.
   const half = Math.max((SLIME_W / 2 + WEAP_OVERHANG) * scale,
