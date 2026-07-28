@@ -39,9 +39,6 @@
   }
   @media (max-width: 760px) {
     .game { grid-template-columns: 1fr; }
-    /* 좁은 화면에서 112px짜리 체력바는 무대 오른쪽으로 넘친다 */
-    .hpwrap { width: 92px; }
-    .ename { font-size: 9px; }
   }
 
   h1 { font-size: 20px; margin: 0 0 14px; letter-spacing: -0.02em; }
@@ -94,7 +91,7 @@
   }
   .unit {
     position: relative;
-    width: 124px; margin-left: 4%;
+    width: 100px; margin-left: 2%;
     display: flex; flex-direction: column; align-items: center;
     /* 위아래 반동과 달려들기를 한 애니메이션에 합쳤다.
        transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
@@ -103,18 +100,47 @@
   @keyframes brawl {
     0%   { transform: translate(0, 0); }
     35%  { transform: translate(0, -7px); }
-    55%  { transform: translate(15px, 0); }
+    55%  { transform: translate(15px, 0); }   /* 달려들어 때린다 */
     72%  { transform: translate(0, 0); }
+    90%  { transform: translate(-8px, 0); }   /* 몬스터 반격에 밀린다 */
     100% { transform: translate(0, 0); }
   }
-  .lvtag {
-    font-size: 11px; font-weight: 700; color: var(--accent);
-    background: #0007; border: 1px solid var(--accent-dim);
-    border-radius: 99px; padding: 2px 8px; margin-bottom: 7px;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
+
+  /* 슬라임 머리 위 이름표 + 체력바. 몬스터 쪽과 폭을 맞춘다. */
+  .tagwrap { width: 104px; margin-bottom: 7px; }
+  .tagrow {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+    margin-bottom: 4px; white-space: nowrap;
   }
-  .sizer { transform-origin: 50% 100%; }
+  .lvtag { font-size: 11px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .shpnum { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .shp {
+    height: 7px; background: #0d0f16;
+    border: 1px solid var(--line); border-radius: 99px; overflow: hidden;
+  }
+  .shp > i {
+    display: block; height: 100%; width: 100%;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+    transition: width 160ms;
+  }
+  .shp.low > i { background: linear-gradient(90deg, #a34848, #ff7a7a); }
+
+  .sizer { position: relative; transform-origin: 50% 100%; }
+
+  /* 무기는 .sizer 안(슬라임과 같이 커짐) + .slime 밖(색조를 안 받음)에 둔다 */
+  .weap {
+    position: absolute; right: -12px; bottom: 14px;
+    font-size: 21px; line-height: 1;
+    transform-origin: 50% 85%;
+    animation: swing 1100ms ease-in-out infinite;
+  }
+  /* 휘두르는 정점이 brawl의 달려들기(55%)와 겹치게 맞췄다 */
+  @keyframes swing {
+    0%, 38%  { transform: rotate(-14deg); }
+    52%      { transform: rotate(-72deg); }
+    64%      { transform: rotate(28deg); }
+    82%, 100% { transform: rotate(-14deg); }
+  }
 
   /* 몬스터 쪽 */
   .foe {
@@ -149,16 +175,18 @@
     transition: width 160ms;
   }
   .ebody {
-    font-size: 44px; line-height: 1;
-    /* 슬라임이 달려드는 55% 직후에 맞는 연출이 오도록 주기를 맞췄다 */
-    animation: foeHurt 1100ms ease-in-out infinite;
+    font-size: 40px; line-height: 1;
+    /* 슬라임과 같은 1100ms 주기. 맞고(62%) → 반격하고(88%)를 한 애니메이션에 담았다.
+       transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
+    animation: foeAct 1100ms ease-in-out infinite;
   }
-  @keyframes foeHurt {
-    0%, 45%  { transform: translateY(0) scale(1); filter: none; }
-    50%      { transform: translateY(-4px); }
-    62%      { transform: translateX(9px) scale(0.93); filter: brightness(2.4) saturate(0.4); }
-    78%      { transform: translateX(0) scale(1); filter: none; }
-    100%     { transform: translateY(0) scale(1); filter: none; }
+  @keyframes foeAct {
+    0%, 45% { transform: translate(0, 0) scale(1); filter: none; }
+    50%     { transform: translate(0, -4px) scale(1); filter: none; }
+    62%     { transform: translate(9px, 0) scale(0.93); filter: brightness(2.4) saturate(0.4); }
+    78%     { transform: translate(0, 0) scale(1); filter: none; }
+    88%     { transform: translate(-16px, -3px) scale(1.06); filter: none; }  /* 반격 */
+    100%    { transform: translate(0, 0) scale(1); filter: none; }
   }
   /* 등급이 오를수록 몬스터에 기운이 돈다 */
   .foe.t1 { filter: drop-shadow(0 0 6px #7ef0b070); }
@@ -177,8 +205,8 @@
     to   { transform: translate(-50%, -34px) scale(1.5); opacity: 0; }
   }
   .slime {
-    width: 120px;
-    height: 96px;
+    width: 92px;
+    height: 74px;
     border-radius: 50% 50% 44% 44%;
     background: radial-gradient(circle at 38% 30%, #fff8, transparent 45%),
                 linear-gradient(#5be39a, #2f9e6b);
@@ -195,7 +223,7 @@
   .eye {
     position: absolute;
     top: 42%;
-    width: 9px; height: 12px;
+    width: 7px; height: 10px;
     border-radius: 50%;
     background: #12141c;
   }
@@ -205,7 +233,7 @@
   .mouth {
     position: absolute;
     top: 62%; left: 50%;
-    width: 15px; height: 11px; margin-left: -7.5px;
+    width: 12px; height: 9px; margin-left: -6px;
     border-radius: 45% 45% 55% 55%;
     background: #12141c;
     transform: scale(0);
@@ -228,22 +256,31 @@
   .slime.hurt .hurtglow { opacity: 1; }
   .slime.hurt .mouth    { transform: scale(1); }
   .slime.hurt .eye      { background: transparent; }
-  .slime.hurt .eye::before,
-  .slime.hurt .eye::after {
+  .slime.hurt .eye::before, .slime.ko .eye::before,
+  .slime.hurt .eye::after,  .slime.ko .eye::after {
     content: "";
     position: absolute;
     top: 50%; left: 0;
-    width: 10px; height: 2.5px; margin-top: -1.25px;
+    width: 8px; height: 2.5px; margin-top: -1.25px;
     border-radius: 2px;
     background: #12141c;
   }
   /* 두 획이 한 점에서 만나도록 회전축을 꼭짓점에 둔다 → 왼눈 ">", 오른눈 "<" */
-  .slime.hurt .eye.l::before { transform-origin: 100% 50%; transform: rotate(-32deg); }
-  .slime.hurt .eye.l::after  { transform-origin: 100% 50%; transform: rotate(32deg); }
-  .slime.hurt .eye.r::before { transform-origin: 0 50%;    transform: rotate(32deg); }
-  .slime.hurt .eye.r::after  { transform-origin: 0 50%;    transform: rotate(-32deg); }
+  .slime.hurt .eye.l::before, .slime.ko .eye.l::before { transform-origin: 100% 50%; transform: rotate(-32deg); }
+  .slime.hurt .eye.l::after,  .slime.ko .eye.l::after  { transform-origin: 100% 50%; transform: rotate(32deg); }
+  .slime.hurt .eye.r::before, .slime.ko .eye.r::before { transform-origin: 0 50%;    transform: rotate(32deg); }
+  .slime.hurt .eye.r::after,  .slime.ko .eye.r::after  { transform-origin: 0 50%;    transform: rotate(-32deg); }
+
+  /* 쓰러졌을 때 — 아픈 표정을 그대로 쓰되 축 늘어진다 */
+  .slime.ko .hurtglow { opacity: 1; }
+  .slime.ko .mouth    { transform: scale(1); }
+  .slime.ko .eye      { background: transparent; }
+  .slime.ko           { opacity: 0.5; }
+  .stage.stunned .unit,
+  .stage.stunned .ebody,
+  .stage.stunned .weap { animation-play-state: paused; }
   .shadow {
-    width: 130px; height: 13px; margin-top: -4px;
+    width: 100px; height: 12px; margin-top: -4px;
     border-radius: 50%;
     background: #0007;
     filter: blur(4px);
@@ -430,6 +467,15 @@
   .note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
   .warn { color: var(--gold); }
 
+  /* 좁은 화면 보정.
+     미디어쿼리도 특이도가 같으면 순서로 이긴다 — 위쪽 @media에 두면
+     아래에 나오는 .hpwrap 기본 규칙에 밀린다. 그래서 끝에 모아 뒀다. */
+  @media (max-width: 760px) {
+    .hpwrap { width: 86px; }
+    .tagwrap { width: 96px; }
+    .ename { font-size: 9px; }
+  }
+
   /* 멀미·발작 민감 사용자를 위한 OS 설정을 존중한다 */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -469,8 +515,14 @@
            계산되기 때문에, 이래야 '무대 폭의 몇 %만큼 전진'이 성립한다. -->
       <div class="mover advancing" id="mover">
         <div class="unit">
-          <div class="lvtag" id="s-lvtag">Lv.1</div>
-          <!-- 레벨별 확대·색조는 .sizer가 맡는다. .slime에 직접 걸면
+          <div class="tagwrap">
+            <div class="tagrow">
+              <span class="lvtag" id="s-lvtag">Lv.1</span>
+              <span class="shpnum" id="s-hpnum">120 / 120</span>
+            </div>
+            <div class="shp" id="s-hpwrap"><i id="s-hpbar"></i></div>
+          </div>
+          <!-- 레벨별 확대는 .sizer가 맡는다. .slime에 직접 걸면
                CSS 애니메이션이 인라인 transform을 이겨서 크기가 날아간다. -->
           <div class="sizer" id="sizer">
             <div class="slime" id="slime">
@@ -479,6 +531,7 @@
               <span class="eye r"></span>
               <span class="mouth"></span>
             </div>
+            <span class="weap" id="s-weap"></span>
           </div>
           <div class="shadow"></div>
         </div>
@@ -560,6 +613,8 @@ const UPGRADES = [
     desc: n => `먹이 경험치 x${(1 + 0.25 * n).toFixed(2)}` },
   { id: 'power',  name: '힘 훈련', base: 120, growth: 1.22,
     desc: n => `공격력 +${n * 2}` },
+  { id: 'vit',    name: '체력 단련', base: 90, growth: 1.20,
+    desc: n => `최대 체력 +${n * 30}` },
 ];
 
 /* 무기 — 업그레이드와 달리 한 번만 사고, 하나만 장착한다.
@@ -608,6 +663,18 @@ const TIERS = ['', '강화된 ', '흉포한 ', '심연의 ', '전설의 '];
 // 시작 직후 첫 보상이 몇 초 안에 들어와야 플레이어가 남는다.
 const hpOfStage     = s => Math.floor(10 * Math.pow(s, 1.55));
 const rewardOfStage = s => Math.floor(8 * Math.pow(s, 1.25));
+// 몬스터의 초당 피해. 지수를 체력(1.55)보다 훨씬 낮게 잡아, 층이 오를수록
+// '못 이기는' 게 아니라 '오래 걸리는' 쪽으로 먼저 막히게 했다.
+//
+// 생존 조건은 단순하다: 초당 재생 >= 초당 피해면 절대 안 죽는다.
+//   재생 = 최대체력 x 0.05,  피해 = 0.35 x 층^1.05
+// 그래서 이 세 숫자의 관계가 "몇 층에서 막히는가"를 통째로 결정한다.
+// 레벨 1 맨몸이 15층까지, 레벨 30이면 체력 단련 없이도 30층까지 버틴다.
+const dmgOfStage    = s => 0.35 * Math.pow(s, 1.05);
+
+const HP_REGEN = 0.05;   // 초당 최대 체력의 5% (완전 회복까지 20초)
+const STUN_SEC = 2.5;    // 쓰러진 뒤 못 움직이는 시간
+const RETREAT  = 3;      // 쓰러지면 물러나는 층 수
 const monsterOf     = s => MONSTERS[(s - 1) % MONSTERS.length];
 const tierOfStage   = s => Math.min(Math.floor((s - 1) / MONSTERS.length), TIERS.length - 1);
 const nameOfStage   = s => TIERS[tierOfStage(s)] + monsterOf(s).name;
@@ -627,6 +694,7 @@ function freshState() {
     souls: 0,
     stage: 1,
     monsterHp: hpOfStage(1),
+    hp: 120,           // 최대 체력은 slimeMaxHp()가 계산한다. load에서 상한을 맞춘다.
     // UPGRADES 표에서 자동으로 만든다 — 표에 행을 추가하면 여기도 따라온다
     up: Object.fromEntries(UPGRADES.map(u => [u.id, 0])),
     weapons: [],       // 보유한 무기 id 목록
@@ -648,7 +716,8 @@ const weaponCrit = () => weaponOf()?.crit ?? 0;
 const critChance = () => Math.min(CRIT_CAP, critOf(state.up.crit) + weaponCrit());
 const perSec    = () => 0.5 * state.up.field * levelMult() * soulMult();
 const expMult   = () => (1 + 0.25 * state.up.digest) * soulMult();
-const atk       = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult();
+const atk        = () => (2 + 2 * state.up.power + weaponAtk()) * levelMult() * soulMult();
+const slimeMaxHp = () => (120 + 30 * state.up.vit) * levelMult() * soulMult();
 const expToNext = () => Math.floor(50 * Math.pow(state.level, 1.6));
 // 한 번에 몇 단계씩 살지: 1 | 10 | 'max'.
 // 게임 진행이 아니라 화면 조작 상태라 state에 넣지 않는다(= 세이브되지 않는다).
@@ -717,8 +786,26 @@ function feed() {
   squish();
 }
 
-// 슬라임이 초당 공격력만큼 몬스터를 때린다. 쓰러뜨리면 젤리를 얻고 다음 층으로.
+/* 서로 초당 피해를 주고받는다. 슬라임이 쓰러지면 몇 층 물러나 기절했다가
+   완전 회복하고 다시 붙는다. 진행을 되돌리는 벌이 아니라 속도 제한 장치다 —
+   방치형에서 진척이 크게 날아가면 그 자리에서 게임을 접는다. */
+let stunLeft = 0;   // 기절 남은 시간(초). 연출용이라 저장하지 않는다.
+
 function fight(dt) {
+  if (stunLeft > 0) { stunLeft = Math.max(0, stunLeft - dt); return; }
+
+  const max = slimeMaxHp();
+  state.hp = Math.min(max, state.hp + max * HP_REGEN * dt);
+  state.hp -= dmgOfStage(state.stage) * dt;
+  if (state.hp <= 0) {
+    state.stage = Math.max(1, state.stage - RETREAT);
+    state.monsterHp = hpOfStage(state.stage);
+    state.hp = slimeMaxHp();
+    stunLeft = STUN_SEC;
+    note(`슬라임이 쓰러졌습니다. ${state.stage}층으로 물러납니다.`, true);
+    return;
+  }
+
   state.monsterHp -= atk() * dt;
   // 공격력이 높으면 한 프레임에 여러 마리를 넘길 수 있어 반복 처리한다.
   // guard는 혹시 체력이 0 이하로 굳었을 때 화면이 멈추는 것을 막는 안전장치다.
@@ -758,6 +845,8 @@ function rebirth() {
   state.souls = souls;
   state.weapons = weapons;
   state.equipped = equipped;
+  state.hp = slimeMaxHp();
+  stunLeft = 0;
   note(`환생! 영혼 ${gained}개를 얻어 전체 배율이 x${soulMult().toFixed(2)}가 되었습니다.`);
 }
 
@@ -839,6 +928,17 @@ function render() {
   $('e-hp').textContent     = `${fmt(hp)} / ${fmt(maxHp)}`;
   $('e-hpbar').style.width  = Math.min(100, hp / maxHp * 100) + '%';
   $('s-lvtag').textContent  = `Lv.${state.level}`;
+
+  const shp = Math.max(0, state.hp), shpMax = slimeMaxHp();
+  const shpPct = Math.min(100, shp / shpMax * 100);
+  $('s-hpnum').textContent = `${fmt(shp)} / ${fmt(shpMax)}`;
+  $('s-hpbar').style.width = shpPct + '%';
+  $('s-hpwrap').classList.toggle('low', shpPct < 35);
+  $('slime').classList.toggle('ko', stunLeft > 0);
+  $('stage').classList.toggle('stunned', stunLeft > 0);
+
+  $('s-weap').textContent = wp ? wp.icon : '';
+
   renderArena();
   $('s-exp').textContent   = `${fmt(state.exp)} / ${fmt(need)}`;
   $('s-expbar').style.width = Math.min(100, state.exp / need * 100) + '%';
@@ -866,10 +966,10 @@ function render() {
     ? `환생 — 레벨 ${REBIRTH_LEVEL} 필요`
     : `환생 — 영혼 +${soulGain()}`;
 
-  // 레벨이 오를수록 커지고 색이 변한다
-  const sz = $('sizer');
-  sz.style.transform = `scale(${slimeScale().toFixed(3)})`;
-  sz.style.filter = `hue-rotate(${(state.level - 1) * 7}deg)`;
+  // 레벨이 오를수록 커지고 색이 변한다.
+  // 색조는 .slime에만 건다 — .sizer에 걸면 그 안의 무기 이모지까지 물든다.
+  $('sizer').style.transform = `scale(${slimeScale().toFixed(3)})`;
+  $('slime').style.filter = `hue-rotate(${(state.level - 1) * 7}deg)`;
 
   // 슬라임이 커지면 멈춰야 할 지점도 앞당겨진다
   if (state.level !== shownLevel) { shownLevel = state.level; layoutArena(); }
@@ -877,8 +977,9 @@ function render() {
 
 // 상한을 두지 않으면 후반에 슬라임이 몬스터를 덮는다
 const slimeScale = () => Math.min(1.4, 1 + Math.log10(state.level) * 0.45);
-const SLIME_W = 120;   // .slime의 CSS 폭. 배율을 곱해 실제 폭을 낸다.
+const SLIME_W = 92;    // .slime의 CSS 폭. 배율을 곱해 실제 폭을 낸다.
 const WALK_PAD = 24;   // 몬스터 앞에 남길 여유. 달려들기(15px)가 여기서 소모된다.
+const WEAP_OVERHANG = 14;  // 무기가 슬라임 오른쪽으로 삐져나오는 폭
 
 /* 슬라임이 전진할 거리를 실측해 --walk에 넣는다.
    transform은 offsetLeft/offsetWidth에 영향을 주지 않으므로,
@@ -887,7 +988,12 @@ let shownLevel = -1;
 function layoutArena() {
   const unit = document.querySelector('.unit');
   const foe = $('foe'), body = $('e-body'), hpwrap = document.querySelector('.hpwrap');
-  const slimeRight = unit.offsetLeft + unit.offsetWidth / 2 + SLIME_W * slimeScale() / 2;
+  const scale = slimeScale();
+  // 오른쪽으로 가장 많이 튀어나온 것을 기준으로 잡는다.
+  // 몸통+무기는 배율을 받고, 이름표·체력바는 받지 않는다.
+  const half = Math.max((SLIME_W / 2 + WEAP_OVERHANG) * scale,
+                        document.querySelector('.tagwrap').offsetWidth / 2);
+  const slimeRight = unit.offsetLeft + unit.offsetWidth / 2 + half;
   const foeCenter = foe.offsetLeft + foe.offsetWidth / 2;
   // 몸통과 체력바 중 더 왼쪽으로 튀어나온 쪽을 기준으로 멈춘다
   const obstacle = foeCenter - Math.max(body.offsetWidth, hpwrap.offsetWidth) / 2;
@@ -958,15 +1064,24 @@ function load() {
   let raw;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { return; }
   if (!raw) return;
+  let saved;
   try {
     // 세이브에 없는 필드는 기본값으로 채운다 — 업데이트 후에도 옛 세이브가 살아남게.
-    const saved = JSON.parse(raw);
+    saved = JSON.parse(raw);
     state = { ...freshState(), ...saved, up: { ...freshState().up, ...(saved.up || {}) } };
   } catch {
     return;
   }
   const secs = Math.max(0, (Date.now() - state.lastSeen) / 1000);
   const capped = Math.min(secs, OFFLINE_CAP_H * 3600);
+
+  // 체력 이전에 저장된 세이브는 hp 필드가 없다 → 가득 채워서 시작한다.
+  // 있으면 자리 비운 동안의 재생을 적용하고 현재 상한으로 자른다.
+  const max = slimeMaxHp();
+  state.hp = typeof saved.hp === 'number'
+    ? Math.min(max, saved.hp + max * HP_REGEN * capped)
+    : max;
+
   const earned = perSec() * capped;
   if (earned >= 1) {
     state.jelly += earned;
