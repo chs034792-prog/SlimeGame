@@ -39,6 +39,9 @@
   }
   @media (max-width: 760px) {
     .game { grid-template-columns: 1fr; }
+    /* 좁은 화면에서 112px짜리 체력바는 무대 오른쪽으로 넘친다 */
+    .hpwrap { width: 92px; }
+    .ename { font-size: 9px; }
   }
 
   h1 { font-size: 20px; margin: 0 0 14px; letter-spacing: -0.02em; }
@@ -54,14 +57,124 @@
   /* ---- 슬라임 무대 ---- */
   .stage {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    min-height: 320px;
+    min-height: 300px;
     overflow: hidden;
     cursor: pointer;
     user-select: none;
+  }
+
+  /* ---- 전투 무대 ---- */
+  .stagetop {
+    position: absolute; top: 12px; left: 14px; right: 14px; z-index: 2;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .floor {
+    flex: none;
+    font-size: 11px; font-weight: 700; color: var(--gold);
+    background: #0006; border: 1px solid var(--line);
+    border-radius: 99px; padding: 3px 9px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ground {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 74px;
+    background: linear-gradient(#191f2e, #131826);
+    border-top: 1px solid #2b3346;
+  }
+
+  /* 슬라임 쪽 */
+  /* --walk는 layoutArena가 화면을 실측해 px로 넣어 준다.
+     화면 폭·슬라임 크기·몬스터 위치가 모두 변수라 고정 %로는 좁은 화면에서 겹친다.
+     아래 값은 실측 전 첫 프레임에만 쓰이는 보수적인 기본값. */
+  .stage { --walk: 18%; }
+  .mover { position: absolute; left: 0; right: 0; bottom: 34px; }
+  .mover.advancing { animation: advance 560ms cubic-bezier(0.35, 0.9, 0.4, 1) forwards; }
+  @keyframes advance {
+    from { transform: translateX(0); }
+    to   { transform: translateX(var(--walk)); }
+  }
+  .unit {
+    position: relative;
+    width: 124px; margin-left: 4%;
+    display: flex; flex-direction: column; align-items: center;
+    /* 위아래 반동과 달려들기를 한 애니메이션에 합쳤다.
+       transform은 요소당 하나만 살아남으므로 나눠 걸 수 없다. */
+    animation: brawl 1100ms ease-in-out infinite;
+  }
+  @keyframes brawl {
+    0%   { transform: translate(0, 0); }
+    35%  { transform: translate(0, -7px); }
+    55%  { transform: translate(15px, 0); }
+    72%  { transform: translate(0, 0); }
+    100% { transform: translate(0, 0); }
+  }
+  .lvtag {
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    background: #0007; border: 1px solid var(--accent-dim);
+    border-radius: 99px; padding: 2px 8px; margin-bottom: 7px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sizer { transform-origin: 50% 100%; }
+
+  /* 몬스터 쪽 */
+  .foe {
+    position: absolute; right: 8%; bottom: 34px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .foe.entering { animation: foeIn 420ms ease-out; }
+  @keyframes foeIn {
+    from { transform: translateX(96px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  /* 체력바를 absolute로 띄워야 .foe의 폭이 몬스터 몸통만큼으로 유지된다.
+     흐름에 두면 112px짜리 바가 .foe를 넓혀서 몬스터가 화면 안쪽으로 밀린다. */
+  .hpwrap {
+    position: absolute; bottom: 100%; left: 50%;
+    transform: translateX(-50%);
+    width: 112px; margin-bottom: 8px;
+  }
+  .ename {
+    display: flex; justify-content: space-between; gap: 6px;
+    font-size: 10px; color: var(--muted); margin-bottom: 4px;
+    white-space: nowrap;
+  }
+  .ehpnum { font-variant-numeric: tabular-nums; }
+  .ehp {
+    height: 7px; background: #0d0f16;
+    border: 1px solid var(--line); border-radius: 99px; overflow: hidden;
+  }
+  .ehp > i {
+    display: block; height: 100%; width: 100%;
+    background: linear-gradient(90deg, #8c3b3b, #e06060);
+    transition: width 160ms;
+  }
+  .ebody {
+    font-size: 44px; line-height: 1;
+    /* 슬라임이 달려드는 55% 직후에 맞는 연출이 오도록 주기를 맞췄다 */
+    animation: foeHurt 1100ms ease-in-out infinite;
+  }
+  @keyframes foeHurt {
+    0%, 45%  { transform: translateY(0) scale(1); filter: none; }
+    50%      { transform: translateY(-4px); }
+    62%      { transform: translateX(9px) scale(0.93); filter: brightness(2.4) saturate(0.4); }
+    78%      { transform: translateX(0) scale(1); filter: none; }
+    100%     { transform: translateY(0) scale(1); filter: none; }
+  }
+  /* 등급이 오를수록 몬스터에 기운이 돈다 */
+  .foe.t1 { filter: drop-shadow(0 0 6px #7ef0b070); }
+  .foe.t2 { filter: drop-shadow(0 0 7px #6ea8ff80); }
+  .foe.t3 { filter: drop-shadow(0 0 8px #c07eff90); }
+  .foe.t4 { filter: drop-shadow(0 0 10px #ffd36ea0); }
+
+  .slainfx {
+    position: absolute; left: 50%; bottom: 10px;
+    transform: translateX(-50%);
+    font-size: 30px; pointer-events: none;
+    animation: slain 480ms ease-out forwards;
+  }
+  @keyframes slain {
+    from { transform: translate(-50%, 0) scale(0.5); opacity: 1; }
+    to   { transform: translate(-50%, -34px) scale(1.5); opacity: 0; }
   }
   .slime {
     width: 120px;
@@ -130,12 +243,17 @@
   .slime.hurt .eye.r::before { transform-origin: 0 50%;    transform: rotate(32deg); }
   .slime.hurt .eye.r::after  { transform-origin: 0 50%;    transform: rotate(-32deg); }
   .shadow {
-    width: 150px; height: 14px; margin-top: -6px;
+    width: 130px; height: 13px; margin-top: -4px;
     border-radius: 50%;
     background: #0007;
     filter: blur(4px);
+    flex: none;
   }
-  .hint { position: absolute; top: 14px; color: var(--muted); font-size: 12px; }
+  .shadow.sm { width: 54px; height: 10px; margin-top: 2px; }
+  .hint {
+    color: var(--muted); font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
 
   .pop {
     position: absolute;
@@ -209,8 +327,6 @@
   .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width 160ms; }
   .barrow { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin: 12px 0 5px; font-variant-numeric: tabular-nums; }
 
-  /* 몬스터 체력은 젤리(민트)와 헷갈리지 않게 붉은 계열로 구분한다 */
-  .bar.hp > i { background: linear-gradient(90deg, #8c3b3b, #e06060); }
 
   /* ---- 머리말 ---- */
   .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -343,18 +459,40 @@
     <button class="shoplink" id="shopbtn" aria-label="무기상점 열기">⚔️ 무기상점</button>
 
     <div class="panel stage" id="stage">
-      <div class="hint">슬라임을 클릭해서 때려 주세요</div>
-      <div class="slime" id="slime">
-        <span class="hurtglow"></span>
-        <span class="eye l"></span>
-        <span class="eye r"></span>
-        <span class="mouth"></span>
+      <div class="stagetop">
+        <span class="floor" id="s-floor">1층</span>
+        <span class="hint">슬라임을 클릭해서 때려 주세요</span>
       </div>
-      <div class="shadow"></div>
-    </div>
+      <div class="ground"></div>
 
-    <div class="barrow"><span id="s-monster">1층 들쥐</span><span id="s-hp">10 / 10</span></div>
-    <div class="bar hp"><i id="s-hpbar"></i></div>
+      <!-- .mover는 무대 전체 폭을 차지한다. translateX(%)가 자기 폭 기준으로
+           계산되기 때문에, 이래야 '무대 폭의 몇 %만큼 전진'이 성립한다. -->
+      <div class="mover advancing" id="mover">
+        <div class="unit">
+          <div class="lvtag" id="s-lvtag">Lv.1</div>
+          <!-- 레벨별 확대·색조는 .sizer가 맡는다. .slime에 직접 걸면
+               CSS 애니메이션이 인라인 transform을 이겨서 크기가 날아간다. -->
+          <div class="sizer" id="sizer">
+            <div class="slime" id="slime">
+              <span class="hurtglow"></span>
+              <span class="eye l"></span>
+              <span class="eye r"></span>
+              <span class="mouth"></span>
+            </div>
+          </div>
+          <div class="shadow"></div>
+        </div>
+      </div>
+
+      <div class="foe entering" id="foe">
+        <div class="hpwrap">
+          <div class="ename"><span id="e-name">들쥐</span><span class="ehpnum" id="e-hp">10 / 10</span></div>
+          <div class="ehp"><i id="e-hpbar"></i></div>
+        </div>
+        <div class="ebody" id="e-body">🐀</div>
+        <div class="shadow sm"></div>
+      </div>
+    </div>
 
     <div class="barrow"><span>경험치</span><span id="s-exp">0 / 50</span></div>
     <div class="bar"><i id="s-expbar"></i></div>
@@ -442,12 +580,37 @@ const WEAPONS = [
 // 몬스터 성장 곡선. 체력의 지수(1.55)가 보상의 지수(1.25)보다 크기 때문에
 // 층이 올라갈수록 사냥이 느려지고, 그래서 공격력에 투자할 이유가 생긴다.
 // 이 두 숫자의 차이가 전투 파트의 난이도 전체를 결정한다.
-const MONSTERS = ['들쥐', '박쥐', '고블린', '늑대', '골렘', '와이번', '리치'];
+// 20층까지의 몬스터. 21층부터는 앞머리에 등급 수식어를 붙이며 다시 돈다.
+const MONSTERS = [
+  { name: '들쥐',      icon: '🐀' },
+  { name: '박쥐',      icon: '🦇' },
+  { name: '독거미',    icon: '🕷️' },
+  { name: '독버섯',    icon: '🍄' },
+  { name: '고블린',    icon: '👺' },
+  { name: '들개',      icon: '🐺' },
+  { name: '멧돼지',    icon: '🐗' },
+  { name: '산적',      icon: '🥷' },
+  { name: '전갈',      icon: '🦂' },
+  { name: '바위 골렘', icon: '🗿' },
+  { name: '독사',      icon: '🐍' },
+  { name: '식인 상어', icon: '🦈' },
+  { name: '미라',      icon: '🧟' },
+  { name: '늪지 마녀', icon: '🧙' },
+  { name: '원귀',      icon: '👻' },
+  { name: '와이번',    icon: '🐉' },
+  { name: '오우거',    icon: '👹' },
+  { name: '크라켄',    icon: '🐙' },
+  { name: '리치',      icon: '💀' },
+  { name: '마왕',      icon: '😈' },
+];
+const TIERS = ['', '강화된 ', '흉포한 ', '심연의 ', '전설의 '];
 // 기본 체력 10 + 기본 공격력 2 = 첫 몬스터를 5초에 잡는다.
 // 시작 직후 첫 보상이 몇 초 안에 들어와야 플레이어가 남는다.
 const hpOfStage     = s => Math.floor(10 * Math.pow(s, 1.55));
 const rewardOfStage = s => Math.floor(8 * Math.pow(s, 1.25));
-const nameOfStage   = s => MONSTERS[(s - 1) % MONSTERS.length];
+const monsterOf     = s => MONSTERS[(s - 1) % MONSTERS.length];
+const tierOfStage   = s => Math.min(Math.floor((s - 1) / MONSTERS.length), TIERS.length - 1);
+const nameOfStage   = s => TIERS[tierOfStage(s)] + monsterOf(s).name;
 
 const REBIRTH_LEVEL = 20;     // 환생 가능 최소 레벨
 const OFFLINE_CAP_H = 8;      // 오프라인 보상 상한(시간)
@@ -672,9 +835,11 @@ function render() {
 
   const maxHp = hpOfStage(state.stage);
   const hp = Math.max(0, state.monsterHp);
-  $('s-monster').textContent = `${state.stage}층 ${nameOfStage(state.stage)}`;
-  $('s-hp').textContent      = `${fmt(hp)} / ${fmt(maxHp)}`;
-  $('s-hpbar').style.width   = Math.min(100, hp / maxHp * 100) + '%';
+  $('s-floor').textContent  = `${state.stage}층`;
+  $('e-hp').textContent     = `${fmt(hp)} / ${fmt(maxHp)}`;
+  $('e-hpbar').style.width  = Math.min(100, hp / maxHp * 100) + '%';
+  $('s-lvtag').textContent  = `Lv.${state.level}`;
+  renderArena();
   $('s-exp').textContent   = `${fmt(state.exp)} / ${fmt(need)}`;
   $('s-expbar').style.width = Math.min(100, state.exp / need * 100) + '%';
   $('feed').disabled = state.jelly < 1;
@@ -702,9 +867,68 @@ function render() {
     : `환생 — 영혼 +${soulGain()}`;
 
   // 레벨이 오를수록 커지고 색이 변한다
-  const s = $('slime');
-  s.style.transform = `scale(${(1 + Math.log10(state.level) * 0.45).toFixed(3)})`;
-  s.style.filter = `hue-rotate(${(state.level - 1) * 7}deg)`;
+  const sz = $('sizer');
+  sz.style.transform = `scale(${slimeScale().toFixed(3)})`;
+  sz.style.filter = `hue-rotate(${(state.level - 1) * 7}deg)`;
+
+  // 슬라임이 커지면 멈춰야 할 지점도 앞당겨진다
+  if (state.level !== shownLevel) { shownLevel = state.level; layoutArena(); }
+}
+
+// 상한을 두지 않으면 후반에 슬라임이 몬스터를 덮는다
+const slimeScale = () => Math.min(1.4, 1 + Math.log10(state.level) * 0.45);
+const SLIME_W = 120;   // .slime의 CSS 폭. 배율을 곱해 실제 폭을 낸다.
+const WALK_PAD = 24;   // 몬스터 앞에 남길 여유. 달려들기(15px)가 여기서 소모된다.
+
+/* 슬라임이 전진할 거리를 실측해 --walk에 넣는다.
+   transform은 offsetLeft/offsetWidth에 영향을 주지 않으므로,
+   전진 애니메이션을 끄지 않고도 '전진 전' 좌표를 그대로 읽을 수 있다. */
+let shownLevel = -1;
+function layoutArena() {
+  const unit = document.querySelector('.unit');
+  const foe = $('foe'), body = $('e-body'), hpwrap = document.querySelector('.hpwrap');
+  const slimeRight = unit.offsetLeft + unit.offsetWidth / 2 + SLIME_W * slimeScale() / 2;
+  const foeCenter = foe.offsetLeft + foe.offsetWidth / 2;
+  // 몸통과 체력바 중 더 왼쪽으로 튀어나온 쪽을 기준으로 멈춘다
+  const obstacle = foeCenter - Math.max(body.offsetWidth, hpwrap.offsetWidth) / 2;
+  $('stage').style.setProperty('--walk', Math.max(0, obstacle - slimeRight - WALK_PAD) + 'px');
+}
+
+/* 층이 바뀔 때만 몬스터를 갈아 끼우고 등장·전진 연출을 다시 튼다.
+   한 프레임에 여러 층을 넘기더라도(공격력이 높으면 그렇다) 마지막 상태 한 번만
+   그리면 되므로, state.stage와 화면에 그려진 층을 비교하는 것으로 충분하다. */
+let shownStage = -1;
+function renderArena() {
+  if (state.stage === shownStage) return;
+  const first = shownStage === -1;
+  shownStage = state.stage;
+
+  const foe = $('foe');
+  $('e-name').textContent = nameOfStage(state.stage);
+  $('e-body').textContent = monsterOf(state.stage).icon;
+
+  const t = tierOfStage(state.stage);
+  for (let i = 1; i <= 4; i++) foe.classList.toggle('t' + i, t === i);
+
+  if (!first) slainFx();
+  restartAnim(foe, 'entering');
+  restartAnim($('mover'), 'advancing');
+}
+
+// 클래스를 다시 붙이는 것만으로는 애니메이션이 처음부터 돌지 않는다.
+// 사이에 리플로우를 한 번 강제해야 브라우저가 새 애니메이션으로 인식한다.
+function restartAnim(el, cls) {
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+function slainFx() {
+  const el = document.createElement('div');
+  el.className = 'slainfx';
+  el.textContent = '💥';
+  $('foe').appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
 }
 
 /* ============================================================
@@ -856,6 +1080,8 @@ $('rebirth').onclick = () => {
 };
 
 load();
+layoutArena();
+addEventListener('resize', layoutArena);
 setInterval(save, 5000);
 addEventListener('beforeunload', save);
 requestAnimationFrame(frame);
